@@ -1,0 +1,15 @@
+EvoPhone X - Technical Specification Guide
+
+EvoPhone X is a premium smartphone designed for heavy daily use. It includes a 6.4-inch OLED display, 120Hz refresh rate, and Gorilla Glass protection. The device ships with 12GB RAM and 256GB internal storage as standard.
+
+The chipset is optimized for AI-assisted photography and multitasking. Camera setup includes a 50MP main sensor, 12MP ultra-wide, and 10MP telephoto lens. Front camera is 32MP.
+
+Battery capacity is 4200mAh. Under mixed usage the average battery life is around 9 hours of active screen-on time. Fast charging supports 65W wired charging.
+
+Official launch price is 799 USD for the base 12GB/256GB version.
+
+FAQ Highlights:
+- RAM: 12GB
+- Storage: 256GB
+- Average battery life: about 9 hours active usage
+- Base price: 799 USD

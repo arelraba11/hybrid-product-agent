@@ -1,0 +1,4 @@
+Summarize the follwing customer reviews into a short paragraph
+highlighting ket themes, both positive and negative:
+
+{{reviews}}

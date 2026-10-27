@@ -1,0 +1,15 @@
+ElectroRide Z - Electric Vehicle Fact Sheet
+
+ElectroRide Z is a compact electric vehicle for urban driving. It uses a 62kWh battery pack and a single-motor rear-wheel drive architecture.
+
+Estimated range in mixed city/highway driving is 410 km per full charge. DC fast charging from 20% to 80% takes around 32 minutes under ideal conditions.
+
+Infotainment includes a 14-inch center screen, wireless phone integration, and built-in navigation. Safety package includes lane assist, adaptive cruise control, and emergency braking.
+
+Base model launch price is 32900 USD.
+
+FAQ Highlights:
+- Battery: 62kWh
+- Estimated range: 410 km
+- Fast charge (20-80): 32 minutes
+- Base price: 32,900 USD

@@ -1,0 +1,14 @@
+PrintForge 3D Printer - User Notes and Pricing
+
+PrintForge is a compact educational 3D printer intended for school labs and home makers. It uses PLA filament, supports 0.1-0.3mm layer heights, and has a printable area of 220x220x250mm.
+
+The base starter package includes printer body, sample filament, and USB transfer cable. Printing speed ranges between 40 and 80 mm/s depending on quality settings.
+
+Power use averages 120W during active print sessions. Typical nozzle replacement interval is every 4-6 months under moderate usage.
+
+Current promotional store price for the base package is 25 USD.
+
+FAQ Highlights:
+- Product name: PrintForge 3D Printer
+- Promotional price: 25 USD
+- Material support: PLA

@@ -1,0 +1,15 @@
+BrewMaster Y - Coffee Machine Manual Extract
+
+BrewMaster Y is an automatic coffee machine aimed at office and home users who need quick drink preparation. It supports espresso, lungo, and cappuccino profiles with a one-touch panel.
+
+Water tank capacity is 1.8 liters. Bean hopper supports 250 grams. Milk frother module is detachable for easy cleaning.
+
+Average brew cycle is 38 seconds for espresso and 52 seconds for cappuccino. Eco mode powers down the heater after 15 minutes of inactivity.
+
+Suggested retail price is 349 USD.
+
+FAQ Highlights:
+- Tank size: 1.8L
+- Bean hopper: 250g
+- Average espresso cycle: 38 seconds
+- Price: 349 USD

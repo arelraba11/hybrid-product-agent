@@ -1,0 +1,15 @@
+NeoBook Air 14 - Product FAQ
+
+NeoBook Air 14 is a lightweight productivity laptop with a 14-inch matte display. It targets students and developers who need portability and battery efficiency.
+
+The standard configuration includes 16GB RAM, 512GB NVMe SSD, and an 8-core CPU. Weight is 1.28kg.
+
+Battery life reaches up to 12 hours under mixed office use. Fast charging reaches 50% in about 30 minutes.
+
+Official online store price is 1099 USD.
+
+FAQ Highlights:
+- RAM: 16GB
+- Storage: 512GB SSD
+- Typical battery life: up to 12 hours
+- Price: 1,099 USD
