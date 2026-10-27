@@ -9,6 +9,7 @@ export const COMPONENTS = [
    'reviews',
    'synthesis',
    'math',
+   'judge',
 ] as const;
 export type Component = (typeof COMPONENTS)[number];
 
@@ -37,6 +38,11 @@ export type ResponseFormat =
    | { type: 'text' }
    | { type: 'json_object' }
    | { type: 'json_schema'; name: string; schema: z.ZodType };
+
+export type LlmUsage = { inputTokens: number; outputTokens: number };
+
+/** What a provider returns; `llm.generate` unwraps it to plain text for callers. */
+export type ProviderResult = { text: string; usage: LlmUsage | null };
 
 export type GenerateOptions = {
    prompt: string;

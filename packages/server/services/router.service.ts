@@ -3,7 +3,7 @@ import {
    classifierPromptLocal,
    ORCHESTRATION_SYNTHESIS_PROMPT,
 } from '../prompts/prompts';
-import { llm } from '../llm';
+import { collectLlmCalls, llm, type LlmCall } from '../llm';
 
 import { getWeather } from './apps/weather.app';
 import { calculateMath } from './apps/math.app';
@@ -12,7 +12,10 @@ import { generalChat } from './apps/general.app';
 import { analyzeReviewWithSelfCorrection } from './apps/reviewAnalyzer.app';
 import { getProductInformation } from './apps/productInformation.app';
 
-import { historyRepository } from '../repositories/history.repository';
+import {
+   historyRepository,
+   type HistoryStore,
+} from '../repositories/history.repository';
 import {
    sanitizeRoute,
    detectCurrencyFromInput,
@@ -20,7 +23,16 @@ import {
 } from './router/policy';
 import { resolveParameters } from './router/placeholders';
 import { buildDeterministicFinanceMessage } from './router/postprocess';
-import type { ExecutedStep, RouterPlan, ToolName } from './router/types';
+import type {
+   AnswerSource,
+   ExecutedStep,
+   NumericSource,
+   PlannerSource,
+   RouterPlan,
+   RouterTrace,
+   StepTrace,
+   ToolName,
+} from './router/types';
 
 const ALLOWED_TOOLS: readonly ToolName[] = [
    'getWeather',
@@ -156,18 +168,36 @@ async function classifyWithFallback(userInput: string): Promise<RouterPlan> {
    }
 }
 
-async function classify(userInput: string): Promise<RouterPlan> {
+function errorMessage(err: unknown): string {
+   return err instanceof Error ? err.message : String(err);
+}
+
+async function classify(
+   userInput: string
+): Promise<{ plan: RouterPlan; source: PlannerSource; errors: string[] }> {
+   const errors: string[] = [];
+
    try {
-      return await classifyWithPlanner(userInput);
+      return {
+         plan: await classifyWithPlanner(userInput),
+         source: 'primary',
+         errors,
+      };
    } catch (err) {
       console.warn('⚠️ Planner failed, falling back to fallback planner:', err);
+      errors.push(`primary: ${errorMessage(err)}`);
    }
 
    try {
-      return await classifyWithFallback(userInput);
+      return {
+         plan: await classifyWithFallback(userInput),
+         source: 'fallback',
+         errors,
+      };
    } catch (err) {
       console.error('❌ Router fallback failed:', err);
-      return fallbackPlan(userInput);
+      errors.push(`fallback: ${errorMessage(err)}`);
+      return { plan: fallbackPlan(userInput), source: 'generalChat', errors };
    }
 }
 
@@ -225,8 +255,13 @@ async function executeSingleStep(
    step: { tool: ToolName; parameters: Record<string, unknown> },
    params: Record<string, unknown>,
    userInput: string,
-   conversationId: string
-): Promise<{ output: string; numericValue: number | null }> {
+   conversationId: string,
+   history: HistoryStore
+): Promise<{
+   output: string;
+   numericValue: number | null;
+   numericSource?: NumericSource;
+}> {
    switch (step.tool) {
       case 'getWeather': {
          const city = String(
@@ -256,7 +291,12 @@ async function executeSingleStep(
             code = detectCurrencyFromInput(userInput);
          }
          const output = getExchangeRate(code, userInput);
-         return { output, numericValue: extractNumericValue(output) };
+         const numericValue = extractNumericValue(output);
+         return {
+            output,
+            numericValue,
+            numericSource: numericValue != null ? 'output' : undefined,
+         };
       }
 
       case 'analyzeReview': {
@@ -290,21 +330,24 @@ async function executeSingleStep(
 
          const output = await getProductInformation(productName, query);
          let numericValue = extractUsdAmount(output);
+         let numericSource: NumericSource | undefined =
+            numericValue != null ? 'output' : undefined;
          if (numericValue == null) {
             numericValue = knownUsdPriceForProduct(productName);
+            if (numericValue != null) numericSource = 'hardcode';
          }
 
          return {
             output,
             numericValue,
+            numericSource,
          };
       }
 
       case 'generalChat':
       default: {
-         const history = historyRepository.get(conversationId);
          const text = String(params.userInput ?? userInput);
-         const r = await generalChat(history, text);
+         const r = await generalChat(history.get(conversationId), text);
          return { output: r.message, numericValue: null };
       }
    }
@@ -333,20 +376,32 @@ async function synthesizeFinalAnswer(
    }
 }
 
+type PlanOutcome = {
+   message: string;
+   intent: string;
+   plan: RouterPlan;
+   steps: StepTrace[];
+   answerSource: AnswerSource;
+};
+
 async function executePlan(
    route: RouterPlan,
    userInput: string,
-   conversationId: string
-): Promise<{ message: string; intent: string }> {
+   conversationId: string,
+   history: HistoryStore
+): Promise<PlanOutcome> {
    console.time('orchestration:total');
 
    const safeRoute = sanitizeRoute(route, userInput);
+   // `executed` is exactly what synthesis sees; trace-only fields live in `steps`.
    const executed: ExecutedStep[] = [];
+   const steps: StepTrace[] = [];
 
    try {
       for (const [idx, step] of safeRoute.plan.entries()) {
          const label = `tool:${idx + 1}:${step.tool}`;
          console.time(label);
+         const start = performance.now();
 
          try {
             const resolvedParameters = resolveParameters(
@@ -354,19 +409,29 @@ async function executePlan(
                executed
             );
 
-            const result = await executeSingleStep(
-               step,
-               resolvedParameters,
-               userInput,
-               conversationId
+            const { result, calls } = await collectLlmCalls(() =>
+               executeSingleStep(
+                  step,
+                  resolvedParameters,
+                  userInput,
+                  conversationId,
+                  history
+               )
             );
 
-            executed.push({
+            const executedStep: ExecutedStep = {
                step: idx + 1,
                tool: step.tool,
                parameters: resolvedParameters,
                output: result.output,
                numericValue: result.numericValue,
+            };
+            executed.push(executedStep);
+            steps.push({
+               ...executedStep,
+               numericSource: result.numericSource ?? null,
+               latencyMs: performance.now() - start,
+               llmCalls: calls,
             });
          } finally {
             console.timeEnd(label);
@@ -382,6 +447,9 @@ async function executePlan(
          return {
             message: deterministic,
             intent: safeRoute.plan[0]?.tool ?? 'generalChat',
+            plan: safeRoute,
+            steps,
+            answerSource: 'deterministic',
          };
       }
 
@@ -396,37 +464,86 @@ async function executePlan(
       return {
          message,
          intent: safeRoute.plan[0]?.tool ?? 'generalChat',
+         plan: safeRoute,
+         steps,
+         answerSource: mustSynthesize ? 'synthesis' : 'lastStep',
       };
    } finally {
       console.timeEnd('orchestration:total');
    }
 }
 
+function sumTotals(calls: LlmCall[]): RouterTrace['totals'] {
+   return {
+      inputTokens: calls.reduce((n, c) => n + (c.inputTokens ?? 0), 0),
+      outputTokens: calls.reduce((n, c) => n + (c.outputTokens ?? 0), 0),
+      costUsd: calls.some((c) => c.costUsd == null)
+         ? null
+         : calls.reduce((n, c) => n + (c.costUsd ?? 0), 0),
+   };
+}
+
+export type HandleOptions = {
+   /** Defaults to the persistent history.json store. */
+   history?: HistoryStore;
+};
+
 export const routerService = {
-   async handleUserMessage(conversationId: string, userInput: string) {
+   async handleUserMessage(
+      conversationId: string,
+      userInput: string,
+      opts: HandleOptions = {}
+   ): Promise<{ message: string; intent?: string; trace?: RouterTrace }> {
       console.log('ROUTER SERVICE HIT 🧠', { conversationId, userInput });
+      const history: HistoryStore = opts.history ?? historyRepository;
 
       if (userInput.trim() === '/reset') {
-         await historyRepository.resetAll();
+         await history.resetAll();
          return { message: 'בוצע reset ✅ התחלנו שיחה חדשה.' };
       }
 
-      const route = await classify(userInput);
+      const start = performance.now();
+      const { result, calls } = await collectLlmCalls(async () => {
+         const planned = await collectLlmCalls(() => classify(userInput));
+         const route = planned.result.plan;
 
-      console.log('📊 Planned Route:', JSON.stringify(route, null, 2));
+         console.log('📊 Planned Route:', JSON.stringify(route, null, 2));
 
-      const out = await executePlan(route, userInput, conversationId);
+         const out = await executePlan(
+            route,
+            userInput,
+            conversationId,
+            history
+         );
+         return { planned, out };
+      });
+      const { planned, out } = result;
 
-      historyRepository.append(conversationId, {
+      const trace: RouterTrace = {
+         input: userInput,
+         plannerSource: planned.result.source,
+         plannerErrors: planned.result.errors,
+         plannerCalls: planned.calls,
+         rawPlan: planned.result.plan,
+         plan: out.plan,
+         steps: out.steps,
+         answerSource: out.answerSource,
+         finalAnswer: out.message,
+         latencyMs: performance.now() - start,
+         llmCalls: calls,
+         totals: sumTotals(calls),
+      };
+
+      history.append(conversationId, {
          role: 'user',
          content: userInput,
       });
-      historyRepository.append(conversationId, {
+      history.append(conversationId, {
          role: 'assistant',
          content: out.message,
       });
-      await historyRepository.save();
+      await history.save();
 
-      return { message: out.message, intent: out.intent };
+      return { message: out.message, intent: out.intent, trace };
    },
 };

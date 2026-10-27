@@ -5,7 +5,12 @@ import type {
    ResponseCreateParamsNonStreaming,
    ResponseFormatTextConfig,
 } from 'openai/resources/responses/responses';
-import type { ComponentConfig, GenerateOptions, ResponseFormat } from './types';
+import type {
+   ComponentConfig,
+   GenerateOptions,
+   ProviderResult,
+   ResponseFormat,
+} from './types';
 
 let client: OpenAI | null = null;
 
@@ -30,7 +35,7 @@ function toTextFormat(format: ResponseFormat): ResponseFormatTextConfig {
 export async function generateOpenAI(
    cfg: ComponentConfig,
    { prompt, temperature, responseFormat }: GenerateOptions
-): Promise<string> {
+): Promise<ProviderResult> {
    const params: ResponseCreateParamsNonStreaming = {
       model: cfg.model,
       input: prompt,
@@ -53,5 +58,13 @@ export async function generateOpenAI(
    }
 
    const response = await getClient().responses.create(params);
-   return response.output_text;
+   return {
+      text: response.output_text,
+      usage: response.usage
+         ? {
+              inputTokens: response.usage.input_tokens,
+              outputTokens: response.usage.output_tokens,
+           }
+         : null,
+   };
 }

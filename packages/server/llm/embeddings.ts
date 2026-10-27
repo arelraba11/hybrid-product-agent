@@ -1,12 +1,16 @@
 // packages/server/llm/embeddings.ts
 // Embeddings are always local (Ollama). Changing EMBEDDING_MODEL requires a full reindex.
 import { OLLAMA_URL } from './config';
+import { recordLlmCall } from './usage';
 
 export const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'embeddinggemma';
 
 export type EmbedDocument = { title?: string; text: string };
 
-type OllamaEmbedResponse = { embeddings: number[][] };
+type OllamaEmbedResponse = {
+   embeddings: number[][];
+   prompt_eval_count?: number;
+};
 
 // embeddinggemma was trained with task prefixes; other models get raw text.
 function usesGemmaPrompts() {
@@ -24,6 +28,7 @@ function documentInput(doc: EmbedDocument) {
 }
 
 async function embedRaw(inputs: string[]): Promise<Float32Array[]> {
+   const start = performance.now();
    const res = await fetch(`${OLLAMA_URL}/api/embed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -38,6 +43,16 @@ async function embedRaw(inputs: string[]): Promise<Float32Array[]> {
    }
 
    const data = (await res.json()) as OllamaEmbedResponse;
+   recordLlmCall({
+      component: 'embeddings',
+      provider: 'ollama',
+      model: EMBEDDING_MODEL,
+      latencyMs: performance.now() - start,
+      inputTokens: data.prompt_eval_count ?? null,
+      outputTokens: 0,
+      costUsd: 0,
+   });
+
    if (data.embeddings?.length !== inputs.length) {
       throw new Error(
          `Ollama embed returned ${data.embeddings?.length ?? 0} vectors for ${inputs.length} inputs`

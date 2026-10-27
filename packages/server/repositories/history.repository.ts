@@ -5,6 +5,29 @@ export type ChatMessage = { role: ChatRole; content: string };
 
 type HistoryState = Record<string, ChatMessage[]>; // conversationId -> messages
 
+/** What the router needs from a history backend. Evals inject an in-memory one. */
+export interface HistoryStore {
+   get(conversationId: string): ChatMessage[];
+   append(conversationId: string, msg: ChatMessage): void;
+   save(): Promise<void>;
+   resetAll(): Promise<void>;
+}
+
+/** Isolated, non-persistent history (never touches history.json). */
+export function createInMemoryHistory(): HistoryStore {
+   let mem: HistoryState = {};
+   return {
+      get: (conversationId) => mem[conversationId] ?? [],
+      append(conversationId, msg) {
+         (mem[conversationId] ??= []).push(msg);
+      },
+      async save() {},
+      async resetAll() {
+         mem = {};
+      },
+   };
+}
+
 const HISTORY_PATH = path.join(process.cwd(), 'history.json');
 
 let state: HistoryState = {};

@@ -1,9 +1,18 @@
 // packages/server/llm/ollama.provider.ts
 import { z } from 'zod';
 import { OLLAMA_URL } from './config';
-import type { ComponentConfig, GenerateOptions, ResponseFormat } from './types';
+import type {
+   ComponentConfig,
+   GenerateOptions,
+   ProviderResult,
+   ResponseFormat,
+} from './types';
 
-type OllamaGenerateResponse = { response: string };
+type OllamaGenerateResponse = {
+   response: string;
+   prompt_eval_count?: number;
+   eval_count?: number;
+};
 
 type OllamaOptions = {
    temperature?: number;
@@ -28,7 +37,7 @@ function toOllamaFormat(
 export async function generateOllama(
    cfg: ComponentConfig,
    { prompt, temperature, stop, responseFormat }: GenerateOptions
-): Promise<string> {
+): Promise<ProviderResult> {
    const options: OllamaOptions = {};
    if (temperature !== undefined) options.temperature = temperature;
    if (cfg.maxTokens !== undefined) options.num_predict = cfg.maxTokens;
@@ -54,5 +63,15 @@ export async function generateOllama(
    }
 
    const data = (await res.json()) as OllamaGenerateResponse;
-   return data.response;
+   const hasUsage =
+      data.prompt_eval_count !== undefined || data.eval_count !== undefined;
+   return {
+      text: data.response,
+      usage: hasUsage
+         ? {
+              inputTokens: data.prompt_eval_count ?? 0,
+              outputTokens: data.eval_count ?? 0,
+           }
+         : null,
+   };
 }

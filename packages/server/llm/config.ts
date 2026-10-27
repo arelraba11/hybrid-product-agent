@@ -7,6 +7,7 @@ import {
    REASONING_EFFORTS,
    type Component,
    type ComponentConfig,
+   type LlmUsage,
    type Provider,
 } from './types';
 
@@ -25,6 +26,7 @@ const ENV_PREFIX: Record<Component, string> = {
    reviews: 'REVIEWS',
    synthesis: 'SYNTHESIS',
    math: 'MATH',
+   judge: 'JUDGE',
 };
 
 const DEFAULTS: Record<Component, { provider: Provider; model: string }> = {
@@ -35,6 +37,7 @@ const DEFAULTS: Record<Component, { provider: Provider; model: string }> = {
    reviews: { provider: 'openai', model: 'gpt-5.4-mini' },
    synthesis: { provider: 'openai', model: 'gpt-5.4-mini' },
    math: { provider: 'openai', model: 'gpt-5.4-mini' },
+   judge: { provider: 'openai', model: 'gpt-5.4-mini' },
 };
 
 const componentSchema = z.object({
@@ -90,4 +93,39 @@ export function describeLlmConfig(): string {
       ].filter(Boolean);
       return `  ${c.padEnd(16)} ${cfg.provider}/${cfg.model}${extras.length ? ` (${extras.join(', ')})` : ''}`;
    }).join('\n');
+}
+
+// USD per 1M tokens, OpenAI list prices (checked 2026-10). Cached-input discounts are
+// ignored, so costs are an upper bound. Ollama runs locally and costs 0.
+const OPENAI_PRICING: Record<string, { input: number; output: number }> = {
+   'gpt-5.4-mini': { input: 0.75, output: 4.5 },
+   'gpt-4o-mini': { input: 0.15, output: 0.6 },
+};
+
+const warnedUnpriced = new Set<string>();
+
+/** null when the model has no price entry or the provider reported no usage. */
+export function costFor(
+   provider: Provider,
+   model: string,
+   usage: LlmUsage | null
+): number | null {
+   if (provider === 'ollama') return 0;
+
+   const price = OPENAI_PRICING[model];
+   if (!price) {
+      if (!warnedUnpriced.has(model)) {
+         warnedUnpriced.add(model);
+         console.warn(
+            `[llm] No price for ${model}; cost will be reported as null.`
+         );
+      }
+      return null;
+   }
+   if (!usage) return null;
+
+   return (
+      (usage.inputTokens * price.input + usage.outputTokens * price.output) /
+      1_000_000
+   );
 }
