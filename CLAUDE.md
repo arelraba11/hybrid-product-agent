@@ -23,7 +23,7 @@ Hybrid design: **Ollama (local) + OpenAI API**. Each LLM component gets its prov
 
 Change one thing per phase so eval deltas are attributable. Do not do work from a later phase unless explicitly asked.
 
-1. **Infra + model upgrade** ← current (code done; Ollama-backed verification pending): python-service removed (embeddings via Ollama `embeddinggemma`, vectors in SQLite with brute-force cosine in TS — no sqlite-vec), Prisma MySQL → SQLite, per-component provider config, models → `gemma4:12b` / `gpt-5.4-mini`, Responses API structured output. **Still to verify:** planner + chat on `gemma4:12b`, the 5 README scenarios on the default config, and the `phi3` legacy config. Move the marker to phase 2 once those pass.
+1. **Infra + model upgrade** ← current (code done; Ollama-backed verification pending): python-service removed (embeddings via Ollama `embeddinggemma`, vectors in SQLite with brute-force cosine in TS — no sqlite-vec), Prisma MySQL → SQLite, per-component provider config, models → `gemma4:12b` / `gpt-5.4-mini`, Responses API structured output. **Still to verify** (`./scripts/smoke.sh`): planner + chat on `gemma4:12b`, the 5 README scenarios on the default config, and the `phi3` legacy config. Move the marker to phase 2 once those pass.
 2. **Eval harness:** golden set (README scenarios + more), `bun run eval`, baseline per model config.
 3. **Remove hardcoded data:** prices in `policy.ts`, FX rates in `exchange.app.ts`, `buildDeterministicFinanceMessage`.
 4. **Native tool calling + escalation:** replace the JSON planner, `policy.ts` and placeholders with schema-based tool calling. Math is also a candidate for local-first + escalation: its failure is detectable (the expression must pass the whitelist and evaluate).
@@ -59,6 +59,7 @@ ollama pull gemma4:12b && ollama pull embeddinggemma
 bun run dev        # server (bun --watch) + client (vite) via concurrently (index.ts)
 bun run index-kb   # (re)index data/products/*.txt into kb_chunks (scripts/index-kb.ts)
 bun run format     # prettier --write .
+./scripts/smoke.sh # 5 README scenarios + 1 chat prompt against a running `bun run dev` (needs jq)
 
 cd packages/server && bun run typecheck            # tsc --noEmit
 cd packages/server && bunx prisma migrate dev      # SQLite at prisma/chatbot.db; also runs prisma generate
