@@ -202,3 +202,19 @@ Previous JSON:
 {{BAD_JSON}}
 
 Fixed JSON:`;
+
+// Eval-only: grades one chatbot answer against a case rubric (scripts/eval.ts).
+export const EVAL_JUDGE_PROMPT = `You are grading one answer from a product-assistant chatbot.
+
+Judge ONLY whether the answer satisfies the rubric. Do not reward length or style beyond what the rubric asks.
+
+Rubric:
+{{RUBRIC}}
+
+User message:
+{{USER_INPUT}}
+
+Chatbot answer:
+{{ANSWER}}
+
+Return JSON: "pass" (true only if every requirement in the rubric is met) and "reason" (one short sentence).`;
