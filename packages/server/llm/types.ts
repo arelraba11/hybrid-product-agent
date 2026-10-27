@@ -1,4 +1,5 @@
 // packages/server/llm/types.ts
+import type { z } from 'zod';
 
 export const COMPONENTS = [
    'planner',
@@ -31,9 +32,16 @@ export type ComponentConfig = {
    reasoningEffort?: ReasoningEffort;
 };
 
+// json_schema: the zod schema is the single source of truth for the structured output.
+export type ResponseFormat =
+   | { type: 'text' }
+   | { type: 'json_object' }
+   | { type: 'json_schema'; name: string; schema: z.ZodType };
+
 export type GenerateOptions = {
    prompt: string;
    temperature?: number;
+   responseFormat?: ResponseFormat;
    /** Stop sequences. Honored by Ollama only (the Responses API has no stop parameter). */
    stop?: string[];
 };

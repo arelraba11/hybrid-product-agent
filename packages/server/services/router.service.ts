@@ -146,6 +146,7 @@ async function classifyWithFallback(userInput: string): Promise<RouterPlan> {
       const text = await llm.generate('plannerFallback', {
          prompt,
          temperature: 0,
+         responseFormat: { type: 'json_object' },
       });
 
       console.log('🔍 RAW PLAN FROM FALLBACK PLANNER:', text);

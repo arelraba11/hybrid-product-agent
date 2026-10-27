@@ -1,7 +1,11 @@
 // packages/server/llm/openai.provider.ts
 import OpenAI from 'openai';
-import type { ResponseCreateParamsNonStreaming } from 'openai/resources/responses/responses';
-import type { ComponentConfig, GenerateOptions } from './types';
+import { zodTextFormat } from 'openai/helpers/zod';
+import type {
+   ResponseCreateParamsNonStreaming,
+   ResponseFormatTextConfig,
+} from 'openai/resources/responses/responses';
+import type { ComponentConfig, GenerateOptions, ResponseFormat } from './types';
 
 let client: OpenAI | null = null;
 
@@ -11,15 +15,31 @@ function getClient() {
    return client;
 }
 
+// Responses API structured output lives under text.format (not response_format).
+function toTextFormat(format: ResponseFormat): ResponseFormatTextConfig {
+   switch (format.type) {
+      case 'text':
+         return { type: 'text' };
+      case 'json_object':
+         return { type: 'json_object' };
+      case 'json_schema':
+         return zodTextFormat(format.schema, format.name);
+   }
+}
+
 export async function generateOpenAI(
    cfg: ComponentConfig,
-   { prompt, temperature }: GenerateOptions
+   { prompt, temperature, responseFormat }: GenerateOptions
 ): Promise<string> {
    const params: ResponseCreateParamsNonStreaming = {
       model: cfg.model,
       input: prompt,
       max_output_tokens: cfg.maxTokens,
    };
+
+   if (responseFormat) {
+      params.text = { format: toTextFormat(responseFormat) };
+   }
 
    if (cfg.reasoningEffort) {
       params.reasoning = { effort: cfg.reasoningEffort };

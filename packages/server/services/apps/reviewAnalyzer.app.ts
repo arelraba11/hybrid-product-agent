@@ -17,34 +17,21 @@ const ReviewAnalysisSchema = z.object({
 
 export type ReviewAnalysis = z.infer<typeof ReviewAnalysisSchema>;
 
-function stripMarkdownJson(text: string) {
-   let t = text.trim();
-   if (t.startsWith('```json')) t = t.replace(/^```json\s*/i, '');
-   if (t.startsWith('```')) t = t.replace(/^```\s*/i, '');
-   if (t.endsWith('```')) t = t.replace(/\s*```$/, '');
-   return t.trim();
-}
-
-function parseJsonSafely(text: string): unknown {
-   const cleaned = stripMarkdownJson(text);
-   return JSON.parse(cleaned);
-}
-
 function needsSanityFix(a: ReviewAnalysis) {
    return a.overall_sentiment === 'Positive' && a.score < 4;
 }
 
 async function analyzeOnce(reviewText: string): Promise<ReviewAnalysis> {
    const prompt = reviewAnalyzerPrompt.replace('{{REVIEW_TEXT}}', reviewText);
-   const text = await llm.generate('reviews', {
-      prompt,
-      temperature: 0,
-   });
+   const { raw, data } = await llm.generateObject(
+      'reviews',
+      ReviewAnalysisSchema,
+      'review_analysis',
+      { prompt, temperature: 0 }
+   );
 
-   console.log('🔍 REVIEW_ANALYZER RAW JSON:', text);
-
-   const obj = parseJsonSafely(text);
-   return ReviewAnalysisSchema.parse(obj);
+   console.log('🔍 REVIEW_ANALYZER RAW JSON:', raw);
+   return data;
 }
 
 async function fixInconsistency(
@@ -55,15 +42,15 @@ async function fixInconsistency(
       .replace('{{REVIEW_TEXT}}', reviewText)
       .replace('{{BAD_JSON}}', JSON.stringify(badJson, null, 2));
 
-   const text = await llm.generate('reviews', {
-      prompt,
-      temperature: 0,
-   });
+   const { raw, data } = await llm.generateObject(
+      'reviews',
+      ReviewAnalysisSchema,
+      'review_analysis',
+      { prompt, temperature: 0 }
+   );
 
-   console.log('🔁 REVIEW_FIX RAW JSON:', text);
-
-   const obj = parseJsonSafely(text);
-   return ReviewAnalysisSchema.parse(obj);
+   console.log('🔁 REVIEW_FIX RAW JSON:', raw);
+   return data;
 }
 
 export async function analyzeReviewWithSelfCorrection(
