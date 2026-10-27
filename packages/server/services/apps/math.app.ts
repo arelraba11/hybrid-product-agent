@@ -1,5 +1,5 @@
 // services/apps/math.app.ts
-import { llmClient } from '../../llm/client';
+import { llm } from '../../llm';
 import { mathCoTPrompt } from '../../prompts/prompts';
 
 function isWordProblem(input: string): boolean {
@@ -17,15 +17,13 @@ async function translateWordProblemToExpression(
    console.log('📝 Word Problem:', wordProblem);
 
    try {
-      const response = await llmClient.generateText({
-         model: 'gpt-4o-mini',
+      const text = await llm.generate('math', {
          prompt,
          temperature: 0,
-         maxTokens: 50,
       });
 
       // Extract just the expression (remove any extra text)
-      let expression = response.text.trim();
+      let expression = text.trim();
       // Remove markdown if present
       if (expression.startsWith('```')) {
          expression = expression

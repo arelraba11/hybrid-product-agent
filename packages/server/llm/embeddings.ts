@@ -1,7 +1,7 @@
 // packages/server/llm/embeddings.ts
 // Embeddings are always local (Ollama). Changing EMBEDDING_MODEL requires a full reindex.
+import { OLLAMA_URL } from './config';
 
-const OLLAMA_BASE_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 export const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'embeddinggemma';
 
 export type EmbedDocument = { title?: string; text: string };
@@ -24,7 +24,7 @@ function documentInput(doc: EmbedDocument) {
 }
 
 async function embedRaw(inputs: string[]): Promise<Float32Array[]> {
-   const res = await fetch(`${OLLAMA_BASE_URL.replace(/\/$/, '')}/api/embed`, {
+   const res = await fetch(`${OLLAMA_URL}/api/embed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: EMBEDDING_MODEL, input: inputs }),

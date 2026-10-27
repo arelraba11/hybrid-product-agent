@@ -1,5 +1,5 @@
 import { generalChatPromptLocal } from '../../prompts/prompts';
-import { callLocalLLM } from '../../llm/ollama.client';
+import { llm } from '../../llm';
 import type { ChatMessage } from '../../repositories/history.repository';
 
 function historyToText(history: ChatMessage[]) {
@@ -96,7 +96,10 @@ User: ${userInput}
 Assistant:
 `.trim();
 
-   const text = await callLocalLLM(fullPrompt);
+   const text = await llm.generate('chat', {
+      prompt: fullPrompt,
+      temperature: 0,
+   });
 
-   return { id: 'ollama-local', message: text };
+   return { id: 'chat', message: text.trim() };
 }

@@ -1,4 +1,4 @@
-import { llmClient } from '../../llm/client';
+import { llm } from '../../llm';
 import { RAG_GENERATION_PROMPT } from '../../prompts/prompts';
 import { searchKb } from '../kb/searchKb';
 import type { KbHit } from '../kb/vectorSearch';
@@ -38,14 +38,12 @@ async function generateAnswer(
          .replace('{{PRODUCT_NAME}}', productName)
          .replace('{{RETRIEVED_CHUNKS}}', buildChunksText(chunks));
 
-      const response = await llmClient.generateText({
-         model: 'gpt-4o-mini',
+      const text = await llm.generate('rag', {
          prompt,
          temperature: 0.1,
-         maxTokens: 300,
       });
 
-      return response.text.trim();
+      return text.trim();
    } finally {
       console.timeEnd('rag:generation');
    }

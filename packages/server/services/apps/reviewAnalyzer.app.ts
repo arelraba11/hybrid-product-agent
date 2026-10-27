@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { llmClient } from '../../llm/client';
+import { llm } from '../../llm';
 import { reviewAnalyzerPrompt, reviewFixPrompt } from '../../prompts/prompts';
 
 const AspectSchema = z.object({
@@ -36,17 +36,14 @@ function needsSanityFix(a: ReviewAnalysis) {
 
 async function analyzeOnce(reviewText: string): Promise<ReviewAnalysis> {
    const prompt = reviewAnalyzerPrompt.replace('{{REVIEW_TEXT}}', reviewText);
-   const r = await llmClient.generateText({
-      model: 'gpt-4o-mini',
+   const text = await llm.generate('reviews', {
       prompt,
       temperature: 0,
-      maxTokens: 450,
-      responseFormat: { type: 'json_object' },
    });
 
-   console.log('🔍 REVIEW_ANALYZER RAW JSON:', r.text);
+   console.log('🔍 REVIEW_ANALYZER RAW JSON:', text);
 
-   const obj = parseJsonSafely(r.text);
+   const obj = parseJsonSafely(text);
    return ReviewAnalysisSchema.parse(obj);
 }
 
@@ -58,17 +55,14 @@ async function fixInconsistency(
       .replace('{{REVIEW_TEXT}}', reviewText)
       .replace('{{BAD_JSON}}', JSON.stringify(badJson, null, 2));
 
-   const r = await llmClient.generateText({
-      model: 'gpt-4o-mini',
+   const text = await llm.generate('reviews', {
       prompt,
       temperature: 0,
-      maxTokens: 450,
-      responseFormat: { type: 'json_object' },
    });
 
-   console.log('🔁 REVIEW_FIX RAW JSON:', r.text);
+   console.log('🔁 REVIEW_FIX RAW JSON:', text);
 
-   const obj = parseJsonSafely(r.text);
+   const obj = parseJsonSafely(text);
    return ReviewAnalysisSchema.parse(obj);
 }
 

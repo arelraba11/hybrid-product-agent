@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import router from './routes';
 import { historyRepository } from './repositories/history.repository';
+import { describeLlmConfig } from './llm/config';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ const startServer = async () => {
 
    app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
+      console.log(`LLM components:\n${describeLlmConfig()}`);
    });
 };
 

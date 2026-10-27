@@ -3,8 +3,7 @@ import {
    classifierPromptLocal,
    ORCHESTRATION_SYNTHESIS_PROMPT,
 } from '../prompts/prompts';
-import { llmClient } from '../llm/client';
-import { callLocalLLM } from '../llm/ollama.client';
+import { llm } from '../llm';
 
 import { getWeather } from './apps/weather.app';
 import { calculateMath } from './apps/math.app';
@@ -31,6 +30,9 @@ const ALLOWED_TOOLS: readonly ToolName[] = [
    'getProductInformation',
    'generalChat',
 ] as const;
+
+// Stop sequences keep the local planner from rambling past the JSON plan.
+const PLANNER_STOP = ['\n\n', '\n##', '\n###', '```', 'INPUT:', 'Rules:'];
 
 function fillTemplate(userInput: string, useLocal = false) {
    const tpl = useLocal ? classifierPromptLocal : classifierPrompt;
@@ -118,49 +120,50 @@ function fallbackPlan(userInput: string): RouterPlan {
    };
 }
 
-async function classifyWithLocal(userInput: string): Promise<RouterPlan> {
-   console.time('router:local');
+async function classifyWithPlanner(userInput: string): Promise<RouterPlan> {
+   console.time('router:planner');
 
    try {
       const promptLocal = fillTemplate(userInput, true);
-      const localText = await callLocalLLM(promptLocal);
+      const localText = await llm.generate('planner', {
+         prompt: promptLocal,
+         temperature: 0,
+         stop: PLANNER_STOP,
+      });
 
-      console.log('🔍 RAW PLAN FROM OLLAMA:', localText);
+      console.log('🔍 RAW PLAN FROM PLANNER:', localText);
       return parseRoutingPlan(localText);
    } finally {
-      console.timeEnd('router:local');
+      console.timeEnd('router:planner');
    }
 }
 
-async function classifyWithOpenAI(userInput: string): Promise<RouterPlan> {
-   console.time('router:openai');
+async function classifyWithFallback(userInput: string): Promise<RouterPlan> {
+   console.time('router:fallback');
 
    try {
       const prompt = fillTemplate(userInput, false);
-      const r = await llmClient.generateText({
-         model: 'gpt-4o-mini',
+      const text = await llm.generate('plannerFallback', {
          prompt,
          temperature: 0,
-         maxTokens: 350,
-         responseFormat: { type: 'json_object' },
       });
 
-      console.log('🔍 RAW PLAN FROM OPENAI:', r.text);
-      return parseRoutingPlan(r.text);
+      console.log('🔍 RAW PLAN FROM FALLBACK PLANNER:', text);
+      return parseRoutingPlan(text);
    } finally {
-      console.timeEnd('router:openai');
+      console.timeEnd('router:fallback');
    }
 }
 
 async function classify(userInput: string): Promise<RouterPlan> {
    try {
-      return await classifyWithLocal(userInput);
+      return await classifyWithPlanner(userInput);
    } catch (err) {
-      console.warn('⚠️ Local router failed, falling back to OpenAI:', err);
+      console.warn('⚠️ Planner failed, falling back to fallback planner:', err);
    }
 
    try {
-      return await classifyWithOpenAI(userInput);
+      return await classifyWithFallback(userInput);
    } catch (err) {
       console.error('❌ Router fallback failed:', err);
       return fallbackPlan(userInput);
@@ -318,14 +321,12 @@ async function synthesizeFinalAnswer(
          userInput
       ).replace('{{TOOL_RESULTS_JSON}}', JSON.stringify(steps, null, 2));
 
-      const r = await llmClient.generateText({
-         model: 'gpt-4o-mini',
+      const text = await llm.generate('synthesis', {
          prompt,
          temperature: 0.1,
-         maxTokens: 320,
       });
 
-      return r.text.trim();
+      return text.trim();
    } finally {
       console.timeEnd('orchestration:synthesis');
    }
