@@ -25,8 +25,15 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 
 1. **Infra + model upgrade** (code done; Ollama-backed verification pending): python-service removed (embeddings via Ollama `embeddinggemma`, vectors in SQLite with brute-force cosine in TS — no sqlite-vec), Prisma MySQL → SQLite, per-component provider config, models → `gemma4:12b` / `gpt-5.4-mini`, Responses API structured output. **Still to verify** (`./scripts/smoke.sh`): planner + chat on `gemma4:12b`, the 5 README scenarios on the default config, and the `phi3` legacy config.
 2. **Eval harness** (done; openai-only baseline in `evals/BASELINE.md`): richer KB + 3 new products, router trace, golden set (`evals/cases.json`), `bun run eval`. **Still to run at home** (needs `gemma4:12b`/`phi3`): default + legacy baselines, appended to `evals/BASELINE.md`.
-3. **Remove hardcoded data** ← next: prices in `policy.ts`, FX rates in `exchange.app.ts`, `buildDeterministicFinanceMessage`.
+   - **2.6 Planner prompt fix:** add parameter names to `classifierPromptLocal` (prompt-only change). Run all three configs before and after.
+3. **Remove hardcoded data:** prices in `policy.ts`, FX rates in `exchange.app.ts`, `buildDeterministicFinanceMessage`. Order of phases 3/4 to be decided after 2.6 results — phase 4 deletes `policy.ts` (and its hardcoded prices) anyway.
 4. **Native tool calling + escalation:** replace the JSON planner, `policy.ts` and placeholders with schema-based tool calling. Math is also a candidate for local-first + escalation: its failure is detectable (the expression must pass the whitelist and evaluate).
+
+**Next steps, in order:**
+
+1. At home: `ollama pull gemma4:12b && ollama pull phi3`, run the default + legacy baselines with the current prompt (`bun run eval --config evals/configs/{default,legacy}.env --runs 3`), run `./scripts/smoke.sh`.
+2. Step 2.6 (planner prompt fix).
+3. Decide the order of phases 3/4.
 
 ## Working rules
 
