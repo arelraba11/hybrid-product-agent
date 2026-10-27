@@ -1,0 +1,514 @@
+{
+   "$comment": "Golden set. expect.tools excludes generalChat ([] = no tools); allow_extra = tools that may also appear without failing. answer_contains: every item required, an inner array is any-of. Matching is case-insensitive with thousands separators removed. derived: expected number computed from the trace's getExchangeRate rate and KB prices (products = data/products file stems).",
+   "cases": [
+      {
+         "id": "st-weather-paris",
+         "category": "single-tool",
+         "input": "What's the weather in Paris right now?",
+         "expect": {
+            "tools": ["getWeather"],
+            "ordered": true,
+            "args": {
+               "getWeather": {
+                  "city": "paris"
+               }
+            },
+            "answer_contains": ["paris"]
+         }
+      },
+      {
+         "id": "st-fx-convert-eur",
+         "category": "single-tool",
+         "tags": ["fx-static", "hardcode-sensitive"],
+         "input": "Convert 200 EUR to ILS.",
+         "expect": {
+            "tools": ["getExchangeRate"],
+            "ordered": true,
+            "allow_extra": ["calculateMath"],
+            "args": {
+               "getExchangeRate": {
+                  "currencyCode": "eur"
+               }
+            },
+            "derived": {
+               "kind": "convert_ils",
+               "amount": 200
+            }
+         }
+      },
+      {
+         "id": "st-math-expr",
+         "category": "single-tool",
+         "input": "What is (17 * 23) - 45?",
+         "expect": {
+            "tools": ["calculateMath"],
+            "ordered": true,
+            "answer_contains": ["346"]
+         }
+      },
+      {
+         "id": "st-math-word",
+         "category": "single-tool",
+         "input": "A class has 28 students and each one needs 3 notebooks. How many notebooks are needed?",
+         "expect": {
+            "tools": ["calculateMath"],
+            "ordered": true,
+            "answer_contains": ["84"]
+         }
+      },
+      {
+         "id": "st-review",
+         "category": "single-tool",
+         "input": "Analyze this review: 'Delivery was fast, but the machine leaks water and support never answered my emails.'",
+         "expect": {
+            "tools": ["analyzeReview"],
+            "ordered": true
+         },
+         "judge": {
+            "rubric": "The answer is a review analysis. Overall sentiment is Negative or Mixed (not Positive). It identifies delivery as positive, and both the leaking/product quality and customer support as negative. It does not invent aspects that are not in the review."
+         }
+      },
+      {
+         "id": "rag-evophone-ram",
+         "category": "rag",
+         "tags": ["readme"],
+         "input": "How much RAM does EvoPhone X have?",
+         "expect": {
+            "tools": ["getProductInformation"],
+            "ordered": true,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "evophone"
+               }
+            },
+            "answer_contains": [["12gb", "12 gb"]]
+         }
+      },
+      {
+         "id": "rag-evophone-battery",
+         "category": "rag",
+         "tags": ["readme"],
+         "input": "What is the average battery life of EvoPhone X?",
+         "expect": {
+            "tools": ["getProductInformation"],
+            "ordered": true,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "evophone"
+               }
+            },
+            "answer_contains": [["9 hours", "9 hrs", "9h", "nine hours"]]
+         }
+      },
+      {
+         "id": "rag-brewmaster-tank",
+         "category": "rag",
+         "tags": ["filter-mismatch"],
+         "input": "How big is the water tank on the BrewMaster Y?",
+         "expect": {
+            "tools": ["getProductInformation"],
+            "ordered": true,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "brewmaster"
+               }
+            },
+            "answer_contains": ["1.8"]
+         }
+      },
+      {
+         "id": "rag-electroride-range",
+         "category": "rag",
+         "input": "What is the range of the standard trim of the ElectroRide Z on a full charge?",
+         "expect": {
+            "tools": ["getProductInformation"],
+            "ordered": true,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "electroride"
+               }
+            },
+            "answer_contains": ["410"]
+         }
+      },
+      {
+         "id": "rag-printforge-promo",
+         "category": "rag",
+         "input": "What is the promotional price of the PrintForge 3D Printer?",
+         "expect": {
+            "tools": ["getProductInformation"],
+            "ordered": true,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "printforge"
+               }
+            },
+            "answer_contains": [["25 usd", "$25", "usd 25", "25 dollars"]]
+         }
+      },
+      {
+         "id": "rag-printforge-after-promo",
+         "category": "rag",
+         "input": "What will the PrintForge 3D Printer cost after the promotion ends?",
+         "expect": {
+            "tools": ["getProductInformation"],
+            "ordered": true,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "printforge"
+               }
+            },
+            "answer_contains": ["199"]
+         }
+      },
+      {
+         "id": "rag-aurora-battery",
+         "category": "rag",
+         "tags": ["new-product"],
+         "input": "How long does the Aurora Smartwatch S3 battery last?",
+         "expect": {
+            "tools": ["getProductInformation"],
+            "ordered": true,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "aurora"
+               }
+            },
+            "answer_contains": [["7 days", "seven days"]]
+         }
+      },
+      {
+         "id": "rag-skyline-price",
+         "category": "rag",
+         "tags": ["new-product"],
+         "input": "How much does the Skyline Drone M2 cost?",
+         "expect": {
+            "tools": ["getProductInformation"],
+            "ordered": true,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "skyline"
+               }
+            },
+            "answer_contains": ["689"]
+         }
+      },
+      {
+         "id": "mt-weather-fx",
+         "category": "multi-tool",
+         "tags": ["readme", "fx-static"],
+         "input": "What is the weather in Paris and what is the USD exchange rate today?",
+         "expect": {
+            "tools": ["getWeather", "getExchangeRate"],
+            "ordered": false,
+            "args": {
+               "getWeather": {
+                  "city": "paris"
+               },
+               "getExchangeRate": {
+                  "currencyCode": "usd"
+               }
+            },
+            "answer_contains": ["paris", "ils"]
+         }
+      },
+      {
+         "id": "mt-review-rag",
+         "category": "multi-tool",
+         "tags": ["readme"],
+         "input": "Analyze this review on EvoPhone X: 'The phone is great but battery is weak', then tell me the average battery life from the KB.",
+         "expect": {
+            "tools": ["analyzeReview", "getProductInformation"],
+            "ordered": true,
+            "args": {
+               "analyzeReview": {
+                  "reviewText": "battery is weak"
+               },
+               "getProductInformation": {
+                  "product_name": "evophone"
+               }
+            },
+            "answer_contains": [["9 hours", "9 hrs", "9h", "nine hours"]]
+         }
+      },
+      {
+         "id": "mt-budget-printforge",
+         "category": "multi-tool",
+         "tags": ["readme", "fx-static", "hardcode-sensitive"],
+         "input": "If Yossi has 100 ILS and wants to buy PrintForge 3D Printer costing 25 USD, how many ILS remain?",
+         "expect": {
+            "tools": ["getExchangeRate", "calculateMath"],
+            "ordered": false,
+            "allow_extra": ["getProductInformation"],
+            "derived": {
+               "kind": "remaining_ils",
+               "budget": 100,
+               "products": ["printforge_3d_printer"]
+            }
+         }
+      },
+      {
+         "id": "mt-budget-skyline",
+         "category": "multi-tool",
+         "tags": ["new-product", "fx-static"],
+         "input": "I have 3000 ILS. If I buy the Skyline Drone M2, how many ILS will I have left?",
+         "expect": {
+            "tools": [
+               "getProductInformation",
+               "getExchangeRate",
+               "calculateMath"
+            ],
+            "ordered": false,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "skyline"
+               }
+            },
+            "derived": {
+               "kind": "remaining_ils",
+               "budget": 3000,
+               "products": ["skyline_drone_m2"]
+            }
+         }
+      },
+      {
+         "id": "mt-missing-evophone",
+         "category": "multi-tool",
+         "tags": ["fx-static", "hardcode-sensitive"],
+         "input": "I have 2500 ILS. How much am I missing to buy the EvoPhone X?",
+         "expect": {
+            "tools": [
+               "getProductInformation",
+               "getExchangeRate",
+               "calculateMath"
+            ],
+            "ordered": false,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "evophone"
+               }
+            },
+            "derived": {
+               "kind": "missing_ils",
+               "budget": 2500,
+               "products": ["evophone_x"]
+            }
+         }
+      },
+      {
+         "id": "mt-missing-aurora",
+         "category": "multi-tool",
+         "tags": ["new-product", "fx-static"],
+         "input": "I have 500 ILS. How much am I missing to buy the Aurora Smartwatch S3?",
+         "expect": {
+            "tools": [
+               "getProductInformation",
+               "getExchangeRate",
+               "calculateMath"
+            ],
+            "ordered": false,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "aurora"
+               }
+            },
+            "derived": {
+               "kind": "missing_ils",
+               "budget": 500,
+               "products": ["aurora_smartwatch_s3"]
+            }
+         }
+      },
+      {
+         "id": "mt-total-brewmaster-neobook",
+         "category": "multi-tool",
+         "tags": ["fx-static", "hardcode-sensitive"],
+         "input": "What is the total in ILS for a BrewMaster Y and a NeoBook Air 14?",
+         "expect": {
+            "tools": [
+               "getProductInformation",
+               "getProductInformation",
+               "getExchangeRate",
+               "calculateMath"
+            ],
+            "ordered": false,
+            "args": {
+               "getProductInformation": [
+                  {
+                     "product_name": "brewmaster"
+                  },
+                  {
+                     "product_name": "neobook"
+                  }
+               ]
+            },
+            "derived": {
+               "kind": "total_ils",
+               "products": [
+                  "brewmaster_y_coffee_machine",
+                  "neobook_air_14_laptop"
+               ]
+            }
+         }
+      },
+      {
+         "id": "mt-total-tidal-aurora",
+         "category": "multi-tool",
+         "tags": ["new-product", "fx-static"],
+         "input": "What is the total in ILS for a Tidal Soundbar 500 and an Aurora Smartwatch S3?",
+         "expect": {
+            "tools": [
+               "getProductInformation",
+               "getProductInformation",
+               "getExchangeRate",
+               "calculateMath"
+            ],
+            "ordered": false,
+            "args": {
+               "getProductInformation": [
+                  {
+                     "product_name": "tidal"
+                  },
+                  {
+                     "product_name": "aurora"
+                  }
+               ]
+            },
+            "derived": {
+               "kind": "total_ils",
+               "products": ["tidal_soundbar_500", "aurora_smartwatch_s3"]
+            }
+         }
+      },
+      {
+         "id": "up-galaxy-ram",
+         "category": "unknown-product",
+         "input": "How much RAM does the Galaxy S30 Ultra have?",
+         "expect": {
+            "tools": [],
+            "ordered": true,
+            "allow_extra": ["getProductInformation"],
+            "answer_not_contains": ["12gb", "12 gb", "16gb", "16 gb"]
+         },
+         "judge": {
+            "rubric": "The user asked about the Galaxy S30 Ultra, which is not in the knowledge base. The answer clearly states that it has no information about this product (or that it is not in the knowledge base). It does not invent specs, prices or other facts for it, and does not present another product's details as if they belonged to it."
+         }
+      },
+      {
+         "id": "up-evophone-z-price",
+         "category": "unknown-product",
+         "input": "What is the price of the EvoPhone Z?",
+         "expect": {
+            "tools": [],
+            "ordered": true,
+            "allow_extra": ["getProductInformation"],
+            "answer_not_contains": ["799", "899"]
+         },
+         "judge": {
+            "rubric": "The user asked about the EvoPhone Z, which is not in the knowledge base (only EvoPhone X is). The answer clearly states that it has no information about this product (or that it is not in the knowledge base). It does not invent specs, prices or other facts for it, and does not present another product's details as if they belonged to it."
+         }
+      },
+      {
+         "id": "up-pixelpad-budget",
+         "category": "unknown-product",
+         "tags": ["fx-static"],
+         "input": "I have 1000 ILS. How many ILS will I have left after buying a PixelPad Pro tablet?",
+         "expect": {
+            "tools": [],
+            "ordered": true,
+            "allow_extra": [
+               "getProductInformation",
+               "getExchangeRate",
+               "calculateMath"
+            ]
+         },
+         "judge": {
+            "rubric": "The user asked how much money remains after buying a PixelPad Pro tablet, which is not in the knowledge base. The answer clearly states that it has no information about this product (or that it is not in the knowledge base). It does not invent specs, prices or other facts for it, and does not present another product's details as if they belonged to it. It does not give a remaining-ILS figure based on an invented price."
+         }
+      },
+      {
+         "id": "cc-greeting",
+         "category": "chit-chat",
+         "input": "Hi! How are you today?",
+         "expect": {
+            "tools": [],
+            "ordered": true,
+            "answer_not_contains": ["ils", "exchange rate", "°c"]
+         },
+         "judge": {
+            "rubric": "A short, friendly conversational reply to a greeting. It does not mention tools, prices, weather or exchange rates, and does not claim to have performed any lookup."
+         }
+      },
+      {
+         "id": "cc-lakehouse",
+         "category": "chit-chat",
+         "tags": ["smoke"],
+         "input": "Explain in two short paragraphs what a data lakehouse is.",
+         "expect": {
+            "tools": [],
+            "ordered": true,
+            "answer_contains": ["lake"]
+         },
+         "judge": {
+            "rubric": "A correct, concise explanation of a data lakehouse (combining data lake storage with data warehouse features such as schemas, transactions and SQL analytics) in roughly two short paragraphs. No made-up product names or tool output."
+         }
+      },
+      {
+         "id": "cc-joke",
+         "category": "chit-chat",
+         "input": "Tell me a short joke about programmers.",
+         "expect": {
+            "tools": [],
+            "ordered": true
+         },
+         "judge": {
+            "rubric": "The reply is a short, recognizable joke about programmers (a few lines at most). It is not a refusal and does not mention tools or lookups."
+         }
+      },
+      {
+         "id": "amb-printforge-price",
+         "category": "ambiguous",
+         "input": "How much does the PrintForge cost?",
+         "expect": {
+            "tools": ["getProductInformation"],
+            "ordered": true,
+            "args": {
+               "getProductInformation": {
+                  "product_name": "printforge"
+               }
+            },
+            "answer_contains": [
+               ["25 usd", "$25", "usd 25", "25 dollars"],
+               ["promo", "promotion"]
+            ]
+         }
+      },
+      {
+         "id": "amb-battery-no-product",
+         "category": "ambiguous",
+         "input": "How long does the battery last?",
+         "expect": {
+            "tools": [],
+            "ordered": true,
+            "allow_extra": ["getProductInformation"]
+         },
+         "judge": {
+            "rubric": "The user asked about battery life without naming a product. The answer asks which product they mean (it may list the products it knows about), or explicitly notes the question is ambiguous. It does not state a single battery figure as if the product were known, and does not invent specs."
+         }
+      },
+      {
+         "id": "amb-drone-price",
+         "category": "ambiguous",
+         "tags": ["new-product"],
+         "input": "How much does the drone cost?",
+         "expect": {
+            "tools": [],
+            "ordered": true,
+            "allow_extra": ["getProductInformation"],
+            "answer_contains": [
+               ["689", "which drone", "which model", "specify"]
+            ]
+         }
+      }
+   ]
+}

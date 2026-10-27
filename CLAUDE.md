@@ -42,6 +42,7 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 - `router/policy.ts` (~460 lines of keyword heuristics + hardcoded prices) — deleted in phase 4. Don't extend it.
 - `apps/exchange.app.ts` hardcoded rates; `buildDeterministicFinanceMessage` templated answers — phase 3.
 - KB product filter is an exact match on the lowercased filename stem (`kbRepository.findByProduct`), so "BrewMaster Y" ≠ `brewmaster y coffee machine` and silently falls back to a global search.
+- Primary planner prompt (`classifierPromptLocal`, used for `planner` whatever its provider/model) lists tool names but no parameter names; its only example is `{"userInput": ...}`. gpt-5.4-mini as primary copies `userInput` into every tool → `normalizeStep` nulls the params, and since the plan parses, the fallback (full prompt) never fires. Phase 4 candidate (schema-based tool calling).
 - Planner still has no zod schema: the OpenAI fallback uses `json_object` (enforced), the local planner relies on the prompt + stop sequences — phase 4.
 
 ---
