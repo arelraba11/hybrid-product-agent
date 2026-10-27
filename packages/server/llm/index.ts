@@ -16,7 +16,10 @@ function stripMarkdownJson(text: string) {
 }
 
 export const llm = {
-   async generate(component: Component, opts: GenerateOptions): Promise<string> {
+   async generate(
+      component: Component,
+      opts: GenerateOptions
+   ): Promise<string> {
       const cfg = llmConfig[component];
       switch (cfg.provider) {
          case 'ollama':

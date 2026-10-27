@@ -3,10 +3,7 @@
 import path from 'path';
 import { readdir } from 'node:fs/promises';
 import { EMBEDDING_MODEL, embedDocuments } from '../llm/embeddings';
-import {
-   kbRepository,
-   type NewKbChunk,
-} from '../repositories/kb.repository';
+import { kbRepository, type NewKbChunk } from '../repositories/kb.repository';
 import { vectorToBytes } from '../services/kb/vectorSearch';
 
 const DATA_DIR = path.resolve(
@@ -48,8 +45,7 @@ async function main() {
       .sort();
    if (!files.length) throw new Error(`No .txt files found in ${DATA_DIR}`);
 
-   const pending: Array<Omit<NewKbChunk, 'embedding' | 'embeddingModel'>> =
-      [];
+   const pending: Array<Omit<NewKbChunk, 'embedding' | 'embeddingModel'>> = [];
 
    for (const file of files) {
       const text = await Bun.file(path.join(DATA_DIR, file)).text();
