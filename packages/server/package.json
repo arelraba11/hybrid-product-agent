@@ -23,5 +23,8 @@
       "express": "^5.1.0",
       "openai": "^6.9.1",
       "zod": "^4.1.13"
+   },
+   "prisma": {
+      "seed": "bun prisma/seed.ts"
    }
 }
