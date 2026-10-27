@@ -1,0 +1,93 @@
+Tidal Soundbar 500 - Product Information Sheet
+
+Tidal Soundbar 500 is a home theater soundbar with a wireless subwoofer for living rooms and medium-sized spaces. It supports Dolby Atmos and connects to a TV with a single HDMI eARC cable.
+
+The Tidal Soundbar 500 costs 429 USD, including the wireless subwoofer. It is a 5.1-channel system with a total output power of 380W.
+
+FAQ Highlights:
+- Channels: 5.1 (with wireless subwoofer)
+- Total power: 380W
+- Dolby Atmos: supported
+- Price: 429 USD
+
+Audio System
+
+- Configuration: 5.1 channels (left, center, right, two side-firing surround drivers, and the wireless subwoofer)
+- Total output power: 380W (soundbar 220W, subwoofer 160W)
+- Drivers in the soundbar: 7 (including a dedicated center channel for clear dialogue)
+- Subwoofer: 6.5-inch down-firing driver
+- Frequency response: 38Hz to 20kHz
+- Supported formats: Dolby Atmos, Dolby Digital Plus, DTS:X, PCM
+
+The soundbar creates a virtual height effect for Dolby Atmos using signal processing; it does not have physical up-firing drivers. Adding the optional rear speakers turns the system into 7.1 channels.
+
+Sound Modes
+
+- Movie mode widens the soundstage for films
+- Music mode keeps a balanced stereo image
+- Night mode reduces loud effects and boosts dialogue so you can watch late at night
+- Voice Enhance raises the center channel for news and talk shows
+- Automatic mode selects the sound mode based on the content
+
+Connectivity
+
+- HDMI eARC to connect to the TV (cable included)
+- HDMI input with 4K HDR passthrough for a game console or streaming box
+- Optical input for older TVs
+- Wi-Fi with built-in streaming from music apps
+- Bluetooth 5.3
+- Multi-room audio with other Tidal speakers through the Tidal Home app
+
+The soundbar can be controlled with the TV remote through HDMI CEC, the included remote, or the Tidal Home app.
+
+Dimensions and Placement
+
+- Soundbar: 98 x 6.5 x 11 cm, 3.6kg
+- Subwoofer: 20 x 38 x 38 cm, 7.1kg
+The soundbar fits in front of TVs from 50 to 75 inches and can be wall-mounted with the included bracket. The subwoofer connects wirelessly and only needs a power outlet; place it within 10 meters of the soundbar.
+
+Power Use
+
+The soundbar uses about 45W during normal listening and less than 2W in network standby. The subwoofer uses about 30W during normal listening.
+
+Pricing and Add-ons
+
+- Tidal Soundbar 500 with wireless subwoofer: 429 USD
+- Tidal Rear Speakers 500 (optional pair of wireless rear speakers): 199 USD
+- Bundle of Tidal Soundbar 500 and Rear Speakers 500: 579 USD
+- Universal wall mount for the subwoofer: 39 USD
+
+Setup
+
+Setup takes about 10 minutes. Connect the soundbar to the TV's HDMI eARC port, plug in the subwoofer, and follow the Tidal Home app to connect to Wi-Fi. The app runs a room calibration that uses the phone microphone to adjust the sound to your room.
+
+In the Box
+
+- Tidal Soundbar 500
+- Wireless subwoofer
+- Remote control with batteries
+- HDMI cable (1.5 meters)
+- Wall-mount bracket and screws
+- Power cables
+- Quick start guide
+
+Warranty and Support
+
+The Tidal Soundbar 500 has a 2-year limited warranty on the soundbar and subwoofer. The remote control is covered for 1 year. Firmware updates that add features are delivered automatically over Wi-Fi.
+
+Frequently Asked Questions
+
+Q: How much does the Tidal Soundbar 500 cost?
+A: 429 USD, including the wireless subwoofer. The optional rear speakers cost 199 USD.
+
+Q: Does it support Dolby Atmos?
+A: Yes, using virtual height processing.
+
+Q: How many channels does it have?
+A: 5.1 channels, or 7.1 with the optional rear speakers.
+
+Q: How do I connect it to my TV?
+A: With the included HDMI cable to the TV's HDMI eARC port, or with optical for older TVs.
+
+Q: How much power does it have?
+A: 380W in total.

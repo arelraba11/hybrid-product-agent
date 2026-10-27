@@ -1,0 +1,87 @@
+Skyline Drone M2 - Product Specification and Buyer Guide
+
+Skyline Drone M2 is a foldable camera drone for travel photographers and content creators. It weighs under 250 grams, which means it does not need registration in many countries for recreational use.
+
+The standard Skyline Drone M2 package costs 689 USD. It records 4K video at 60 frames per second, has a maximum flight time of 34 minutes per battery, and a video transmission range of up to 10 km.
+
+FAQ Highlights:
+- Weight: 249 grams
+- Maximum flight time: 34 minutes
+- Video: 4K at 60fps
+- Price: 689 USD
+
+Aircraft Specifications
+
+- Takeoff weight: 249 grams
+- Folded size: 148 x 90 x 62 mm
+- Maximum horizontal speed: 57 km/h (Sport mode)
+- Maximum wind resistance: 38 km/h (Level 5)
+- Maximum service ceiling: 4,000 m above sea level
+- Operating temperature: -10 to 40 degrees Celsius
+- Satellite positioning: GPS, Galileo and BeiDou
+- Internal storage: 2GB, plus a microSD slot up to 256GB
+
+Camera and Gimbal
+
+The camera uses a 1/1.3-inch 48MP sensor with an f/1.7 aperture. Video recording supports 4K at up to 60 frames per second, 2.7K at 60fps and 1080p slow motion at 120fps. A 10-bit color profile is available for color grading. The 3-axis mechanical gimbal stabilizes footage and can rotate 90 degrees for vertical shots for social media. Photo modes include single shot, burst, panorama, and automatic exposure bracketing.
+
+Flight Time and Batteries
+
+The Skyline Drone M2 Intelligent Flight Battery has a capacity of 2,450mAh. The maximum flight time is 34 minutes per battery, measured while hovering in calm conditions with no wind. This is the official flight time figure. Realistic values are lower:
+- Typical flight time with normal filming and moderate wind: about 26 minutes
+- Flight time with the optional Plus battery: up to 45 minutes (the Plus battery raises takeoff weight above 250 grams)
+
+A battery charges from 0 to 100 percent in about 70 minutes with a 30W USB-C charger. The two-way charging hub charges three batteries in sequence.
+
+Transmission and Controller
+
+Video transmission range is up to 10 km in open areas without interference (FCC). In urban areas, expect 1.5 to 3 km. Live view is streamed at 1080p 30fps to the RC-M controller, which holds a smartphone. The controller battery lasts about 4 hours.
+
+Safety Features
+
+- Obstacle sensing on the front, rear and bottom
+- Automatic return to home when the battery is low or the signal is lost
+- Geofencing warnings near airports and restricted zones
+- Precision landing using the downward vision system
+
+Packages and Pricing
+
+- Skyline Drone M2 standard package (drone, one battery, RC-M controller): 689 USD
+- Fly More Kit (standard package plus two extra batteries, charging hub and shoulder bag): 879 USD
+- Extra Intelligent Flight Battery: 69 USD
+- Plus battery (45-minute flight time): 95 USD
+- Spare propeller set (4 pairs): 12 USD
+
+Regulations
+
+Because it weighs 249 grams, the Skyline Drone M2 falls under the lightest drone category in many countries. Pilots must still follow local rules: keep the drone within visual line of sight, do not fly over crowds, and respect no-fly zones. Rules differ by country, so check local regulations before flying.
+
+In the Box (standard package)
+
+- Skyline Drone M2 aircraft
+- One Intelligent Flight Battery
+- RC-M remote controller
+- USB-C cable
+- Spare propellers (1 pair)
+- Gimbal protector
+
+Warranty and Support
+
+The Skyline Drone M2 includes a 1-year limited warranty on the aircraft and a 6-month warranty on batteries. Crash damage is not covered by the standard warranty. The SkyCare plan, priced at 79 USD per year, covers up to two replacements for crash or water damage.
+
+Frequently Asked Questions
+
+Q: How much does the Skyline Drone M2 cost?
+A: The standard package costs 689 USD. The Fly More Kit costs 879 USD.
+
+Q: How long can it fly?
+A: Up to 34 minutes per battery in calm conditions; about 26 minutes in typical use.
+
+Q: Do I need to register it?
+A: In many countries, drones under 250 grams do not need registration for recreational use, but check local rules.
+
+Q: Can it shoot 4K?
+A: Yes, 4K at up to 60 frames per second.
+
+Q: How far can it fly from the controller?
+A: Video transmission reaches up to 10 km in open areas without interference.

@@ -12,3 +12,72 @@ FAQ Highlights:
 - Product name: PrintForge 3D Printer
 - Promotional price: 25 USD
 - Material support: PLA
+
+Overview of the Printer
+
+The PrintForge 3D Printer is a fused-filament printer with an open frame, designed so students can see each part of the printing process. Assembly takes about 30 minutes with the included tools. It weighs 6.5kg and its footprint is 42x40cm, so it fits on a standard classroom desk.
+
+Specifications
+
+- Printing technology: fused filament fabrication (FFF)
+- Build volume: 220x220x250mm
+- Layer height: 0.1-0.3mm
+- Print speed: 40-80 mm/s depending on quality settings
+- Nozzle diameter: 0.4mm (brass)
+- Filament diameter: 1.75mm
+- Supported material: PLA only (ABS and PETG are not supported because the hotend is limited to 220 degrees Celsius)
+- Heated bed: up to 60 degrees Celsius, removable magnetic plate
+- Connectivity: USB transfer cable and microSD card
+- Display: 2.8-inch color touch screen
+- Noise level: about 48dB during printing
+
+Pricing and Packages
+
+The current promotional store price for the base package is 25 USD. The promotion is limited to the school year and is intended for education programs. The regular list price after the promotion ends is 199 USD. A Classroom Bundle with five printers, 5kg of PLA and a teacher training session is available at 899 USD.
+
+Consumables (sold separately):
+- PLA filament spool, 1kg: 19 USD
+- Replacement nozzle three-pack: 9 USD
+- Spare magnetic build plate: 24 USD
+
+Power and Maintenance
+
+Power use averages 120W during active print sessions, with a peak of about 250W while the bed heats up. In standby the printer draws less than 5W. Typical nozzle replacement interval is every 4-6 months under moderate usage. The build plate should be cleaned with isopropyl alcohol every few prints, and the guide rods should be lubricated about once a month in heavy classroom use.
+
+Software
+
+PrintForge works with the free PrintForge Slicer for Windows, macOS and Linux, and with common open-source slicers using the provided printer profile. Lesson plans for introductory 3D design are available on the PrintForge education portal.
+
+Safety
+
+The hotend reaches 220 degrees Celsius; students should be supervised. The printer has thermal runaway protection that cuts power to the heater if the temperature rises unexpectedly. PLA is a plant-based material and is the recommended filament for classrooms.
+
+In the Box (base starter package)
+
+- PrintForge printer body
+- Sample PLA filament (about 50 grams)
+- USB transfer cable
+- 8GB microSD card with sample models
+- Assembly tool kit
+- Quick start guide
+
+Warranty and Support
+
+The PrintForge 3D Printer has a 1-year limited warranty on the frame and electronics. Nozzles, build plates and filament are consumables and are not covered. Schools on the Classroom Bundle receive priority email support.
+
+Frequently Asked Questions
+
+Q: How much does the PrintForge 3D Printer cost?
+A: The base package is on promotion for 25 USD. The regular list price is 199 USD.
+
+Q: Which materials can it print?
+A: PLA only.
+
+Q: What is the largest object I can print?
+A: Up to 220x220x250mm.
+
+Q: How often should I replace the nozzle?
+A: Every 4-6 months under moderate usage.
+
+Q: How much power does it use?
+A: About 120W on average during active printing.

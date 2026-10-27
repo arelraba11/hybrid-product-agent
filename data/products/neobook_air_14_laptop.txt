@@ -13,3 +13,69 @@ FAQ Highlights:
 - Storage: 512GB SSD
 - Typical battery life: up to 12 hours
 - Price: 1,099 USD
+
+Display
+
+The NeoBook Air 14 has a 14-inch matte IPS display with a resolution of 2560x1600 (16:10 aspect ratio), 400 nits of brightness and 100 percent sRGB coverage. The matte coating reduces reflections in classrooms and offices. The display is not a touchscreen. The lid opens to 180 degrees so the laptop can lie flat for sharing the screen.
+
+Performance
+
+The 8-core CPU combines 4 performance cores and 4 efficiency cores with a maximum boost clock of 4.8GHz. Integrated graphics handle 4K video editing for short projects and light gaming. The standard configuration includes 16GB RAM (LPDDR5X, soldered, not upgradeable) and a 512GB NVMe SSD. The SSD is user-replaceable using a standard M.2 2280 slot.
+
+Configurations and Pricing
+
+The standard NeoBook Air 14 configuration (16GB RAM, 512GB SSD) costs 1,099 USD on the official online store. A higher configuration with 32GB RAM and 1TB SSD is available at 1,399 USD. An education discount of 10 percent applies to the standard configuration for verified students and teachers. Prices exclude sales tax.
+
+Optional accessories (sold separately):
+- NeoBook USB-C travel dock: 79 USD
+- NeoBook sleeve case: 35 USD
+
+Battery and Charging
+
+The NeoBook Air 14 uses a 60Wh battery. Battery life reaches up to 12 hours under mixed office use (web browsing, documents, video calls at moderate brightness). This is the official typical battery figure. Other measurements:
+- Local video playback: up to 15 hours
+- Continuous video calls: about 8 hours
+- Heavy compilation or rendering workloads: about 4 hours
+
+The included 65W USB-C charger brings the battery to 50 percent in about 30 minutes. The laptop can also charge from any USB Power Delivery charger rated 45W or higher, at slower speeds.
+
+Ports and Connectivity
+
+- 2x USB-C (USB4, 40Gbps, charging and DisplayPort output)
+- 1x USB-A 3.2
+- 1x HDMI 2.1
+- 3.5mm headphone jack
+- microSD card reader
+Wireless connectivity includes Wi-Fi 7 and Bluetooth 5.4.
+
+Build, Keyboard and Weight
+
+The chassis is made of recycled aluminum. Weight is 1.28kg and thickness is 14.9mm. The backlit keyboard has 1.3mm key travel and the glass trackpad supports multi-finger gestures. A 1080p webcam with a physical privacy shutter and a fingerprint reader in the power button are included.
+
+In the Box
+
+- NeoBook Air 14 laptop
+- 65W USB-C charger
+- USB-C cable (2 meters)
+- Quick start guide
+
+Warranty and Support
+
+The NeoBook Air 14 includes a 1-year limited warranty covering manufacturing defects. Students who buy with the education discount receive a 2-year warranty instead. An extended NeoCare plan adds a third year and accidental damage coverage for 149 USD. Battery wear below 80 percent capacity within the warranty period qualifies for a free battery replacement.
+
+Frequently Asked Questions
+
+Q: How much RAM does the NeoBook Air 14 have?
+A: The standard configuration has 16GB RAM. A 32GB configuration is also sold.
+
+Q: What is the battery life of the NeoBook Air 14?
+A: Up to 12 hours under mixed office use.
+
+Q: How much does the NeoBook Air 14 cost?
+A: The standard 16GB/512GB configuration costs 1,099 USD. The 32GB/1TB configuration costs 1,399 USD.
+
+Q: Can I upgrade the RAM later?
+A: No, the RAM is soldered. The SSD can be replaced.
+
+Q: Is it good for programming?
+A: Yes. It targets students and developers, with 16GB RAM, an 8-core CPU and a 2560x1600 display.

@@ -13,3 +13,71 @@ FAQ Highlights:
 - Estimated range: 410 km
 - Fast charge (20-80): 32 minutes
 - Base price: 32,900 USD
+
+Powertrain and Performance
+
+- Motor: single permanent-magnet motor, rear-wheel drive
+- Power: 150kW (about 204 horsepower)
+- Torque: 310Nm
+- Acceleration 0-100 km/h: 7.4 seconds
+- Top speed: 160 km/h
+- Regenerative braking: three levels plus one-pedal driving mode
+
+Battery, Range and Charging
+
+The ElectroRide Z uses a 62kWh battery pack (usable capacity 59kWh). The estimated range in mixed city/highway driving is 410 km per full charge. This is the official range figure. Other range values depend on conditions:
+- City-only driving in mild weather: up to 480 km
+- Highway driving at 120 km/h: about 300 km
+- Winter driving at -10 degrees Celsius: about 290 km
+
+DC fast charging from 20% to 80% takes around 32 minutes under ideal conditions, with a peak charging power of 130kW. AC charging at 11kW takes about 6.5 hours from 0 to 100 percent. A heat pump is standard and helps preserve range in cold weather.
+
+Trims and Pricing
+
+- Base model (launch price): 32,900 USD
+- Long Range trim with an 82kWh battery and an estimated 540 km range: 38,500 USD
+- Optional Comfort Package (heated seats, heated steering wheel, premium audio): 1,800 USD
+- Home wallbox charger with standard installation: 1,100 USD
+Prices exclude taxes, registration and delivery fees. Government incentives may lower the final price depending on the country.
+
+Dimensions and Practicality
+
+- Length: 4,150 mm; width: 1,800 mm; height: 1,560 mm
+- Wheelbase: 2,700 mm
+- Seating: 5 adults
+- Cargo space: 380 liters, up to 1,150 liters with rear seats folded
+- Front trunk: 35 liters, suitable for charging cables
+- Turning circle: 10.2 m
+- Curb weight: 1,720 kg
+
+Infotainment and Connectivity
+
+Infotainment includes a 14-inch center screen, wireless phone integration, and built-in navigation with charging station routing. A 10-inch digital driver display shows speed, range and navigation directions. Over-the-air software updates are included for 8 years. The companion app allows remote climate control, charging schedules and locking.
+
+Safety
+
+The safety package includes lane assist, adaptive cruise control, and emergency braking. Additional standard features are blind spot monitoring, rear cross-traffic alert, a 360-degree camera and seven airbags. The ElectroRide Z received a five-star rating in independent crash testing.
+
+Warranty and Service
+
+- Vehicle warranty: 4 years or 100,000 km, whichever comes first
+- Battery and drive unit warranty: 8 years or 160,000 km, guaranteeing at least 70 percent battery capacity
+- Recommended service interval: every 2 years or 30,000 km
+- Roadside assistance: included for 4 years
+
+Frequently Asked Questions
+
+Q: What is the range of the ElectroRide Z?
+A: About 410 km per full charge in mixed city/highway driving with the base 62kWh battery.
+
+Q: How long does fast charging take?
+A: Around 32 minutes from 20% to 80% under ideal conditions.
+
+Q: How much does the ElectroRide Z cost?
+A: The base model launch price is 32,900 USD. The Long Range trim costs 38,500 USD.
+
+Q: How big is the battery?
+A: 62kWh on the base model; the Long Range trim has 82kWh.
+
+Q: Is it all-wheel drive?
+A: No, the ElectroRide Z is single-motor rear-wheel drive.

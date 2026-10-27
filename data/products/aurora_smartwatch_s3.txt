@@ -1,0 +1,90 @@
+Aurora Smartwatch S3 - Product Guide
+
+Aurora Smartwatch S3 is a fitness-focused smartwatch for runners, cyclists and everyday wearers who want health tracking without charging every night. It pairs with Android and iOS phones through the Aurora Fit app.
+
+The standard Aurora Smartwatch S3 (GPS model) costs 249 USD. It has a 1.43-inch AMOLED touchscreen, built-in dual-band GPS, and a typical battery life of 7 days on a single charge.
+
+FAQ Highlights:
+- Display: 1.43-inch AMOLED
+- Typical battery life: 7 days
+- Water resistance: 5ATM
+- Price: 249 USD
+
+Display and Design
+
+The 1.43-inch AMOLED display has a resolution of 466x466 pixels and a peak brightness of 2000 nits, so it stays readable in direct sunlight. An always-on display mode is available. The case is 44mm wide and made of aluminum with a sapphire crystal cover. The watch weighs 36 grams without the strap. It comes with a 22mm quick-release silicone strap, and any standard 22mm strap fits. Colors: Midnight, Sand and Forest Green.
+
+Health and Fitness Tracking
+
+- Heart rate: continuous optical heart rate monitoring with high and low heart rate alerts
+- Blood oxygen (SpO2): on-demand and overnight measurements
+- Sleep tracking: sleep stages, sleep score and breathing rate
+- Stress tracking based on heart rate variability
+- Skin temperature trends during sleep
+- More than 120 sport modes, with automatic detection for walking, running, cycling and swimming
+- Dual-band GPS for accurate distance and pace in cities and under trees
+
+The Aurora Smartwatch S3 is a wellness device and is not a medical device. Its readings are not intended to diagnose any condition.
+
+Battery and Charging
+
+The battery capacity is 470mAh. The typical battery life is 7 days with normal use, which includes continuous heart rate, sleep tracking, notifications and about 30 minutes of GPS workouts per day. This 7-day figure is the official typical battery life. Other measurements:
+- Battery saver mode: up to 14 days
+- Always-on display enabled: about 4 days
+- Continuous GPS tracking: up to 22 hours
+
+The magnetic charging puck charges the watch from 0 to 100 percent in about 60 minutes. A 10-minute charge provides about one day of typical use.
+
+Water Resistance
+
+The Aurora Smartwatch S3 is rated 5ATM, which means it is suitable for swimming in a pool or shallow water. It is not suitable for scuba diving, water skiing or high-velocity water activities.
+
+Smart Features
+
+- Notifications for calls, messages and apps from the paired phone
+- Contactless payments with NFC
+- Offline music storage of 4GB (about 500 songs) with Bluetooth headphones
+- Voice assistant through the paired phone
+- Find my phone, timers, alarms and weather
+
+Models and Pricing
+
+- Aurora Smartwatch S3 (GPS model): 249 USD
+- Aurora Smartwatch S3 LTE model with an eSIM for calls without the phone nearby: 299 USD (carrier plan not included)
+- Aurora Fit Premium subscription with guided training plans: 5 USD per month (optional; all core tracking features work without it)
+
+Accessories (sold separately):
+- Extra magnetic charging cable: 19 USD
+- Woven nylon strap: 29 USD
+
+Compatibility
+
+Requires Android 10 or later, or iOS 16 or later. The watch connects with Bluetooth 5.3. Health data can be exported to common health platforms from the Aurora Fit app.
+
+In the Box
+
+- Aurora Smartwatch S3
+- 22mm silicone strap (sizes S/M and M/L)
+- Magnetic charging cable (USB-C)
+- Quick start guide
+
+Warranty and Support
+
+The Aurora Smartwatch S3 includes a 1-year limited warranty covering manufacturing defects. Damage to the screen from impacts and wear of the strap are not covered. The optional AuroraCare plan adds one year of coverage and one screen replacement for 39 USD.
+
+Frequently Asked Questions
+
+Q: How much does the Aurora Smartwatch S3 cost?
+A: The GPS model costs 249 USD. The LTE model costs 299 USD.
+
+Q: How long does the battery last?
+A: About 7 days of typical use, or up to 14 days in battery saver mode.
+
+Q: Can I swim with it?
+A: Yes. It is rated 5ATM for pool and shallow-water swimming.
+
+Q: Does it work with iPhone?
+A: Yes, with iOS 16 or later.
+
+Q: Does it need a subscription?
+A: No. Aurora Fit Premium is optional.

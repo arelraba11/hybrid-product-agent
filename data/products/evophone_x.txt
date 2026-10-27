@@ -13,3 +13,73 @@ FAQ Highlights:
 - Storage: 256GB
 - Average battery life: about 9 hours active usage
 - Base price: 799 USD
+
+Display and Design
+
+The EvoPhone X display is a 6.4-inch OLED panel with a resolution of 2400x1080 and a peak brightness of 1600 nits outdoors. The 120Hz refresh rate adapts down to 10Hz on static content to save power. The front is covered by Gorilla Glass and the frame is brushed aluminum. The phone weighs 189 grams and is 8.1mm thick. It is rated IP68 for dust and water resistance (up to 1.5 meters for 30 minutes). Available colors are Graphite Black, Glacier Silver and Ocean Teal.
+
+Performance and Memory
+
+Every EvoPhone X ships with 12GB RAM. Memory is not expandable and there is no microSD slot. The octa-core chipset is built on a 4nm process and includes a dedicated neural engine used for scene detection, night mode and on-device voice transcription. Sustained gaming performance is supported by a vapor chamber cooling system.
+
+Storage configurations and pricing
+
+The base EvoPhone X configuration is 12GB RAM with 256GB storage at 799 USD. A higher-storage configuration with 12GB RAM and 512GB storage is sold separately at 899 USD. Both configurations have the same RAM, cameras and battery; only internal storage differs. Prices exclude local taxes and carrier subsidies.
+
+Optional accessories (sold separately):
+- EvoPhone X 65W charger: 39 USD (a charger is not included in the box)
+- EvoPhone X silicone case: 29 USD
+- EvoPhone X screen protector two-pack: 15 USD
+
+Camera System
+
+The rear camera array combines a 50MP main sensor with optical image stabilization, a 12MP ultra-wide lens with a 120-degree field of view, and a 10MP telephoto lens with 3x optical zoom. Video recording goes up to 4K at 60 frames per second on the main and telephoto cameras. The 32MP front camera records 4K at 30 frames per second. AI-assisted photography features include night mode, portrait relighting and automatic scene optimization.
+
+Battery and Charging
+
+The EvoPhone X battery is 4200mAh. The official average battery life figure is around 9 hours of active screen-on time under mixed usage, which includes browsing, messaging, camera use and video streaming. Other measurements, which should not be confused with the average active-use figure:
+- Standby time: up to 60 hours with the screen off
+- Continuous local video playback: up to 18 hours
+- Heavy 3D gaming: about 5 hours
+
+With the 65W wired charger the battery goes from 0 to 50 percent in about 15 minutes and to 100 percent in about 42 minutes. EvoPhone X also supports 15W wireless charging. The battery is designed to keep at least 80 percent of its original capacity after 800 full charge cycles.
+
+Connectivity
+
+EvoPhone X supports 5G (sub-6GHz), Wi-Fi 7, Bluetooth 5.4, NFC for contactless payments, and dual SIM (one physical nano-SIM plus eSIM). The USB-C port supports USB 3.2 for fast file transfer and DisplayPort video output.
+
+Software and Updates
+
+The phone ships with the latest version of the EvoOS operating system. The manufacturer commits to 5 years of major operating system updates and 6 years of security patches from the launch date.
+
+In the Box
+
+- EvoPhone X handset
+- USB-C to USB-C cable (1 meter)
+- SIM ejector tool
+- Quick start guide
+A charger is not included.
+
+Warranty and Support
+
+EvoPhone X comes with a 2-year limited manufacturer warranty covering hardware defects. Accidental damage and water damage are not covered by the standard warranty. An optional EvoCare Plus plan extends coverage to 3 years and adds two accidental damage repairs; it is priced at 129 USD. Battery replacement is covered under warranty if capacity falls below 80 percent within the warranty period.
+
+Frequently Asked Questions
+
+Q: How much RAM does EvoPhone X have?
+A: All EvoPhone X models have 12GB RAM.
+
+Q: What is the average battery life of EvoPhone X?
+A: About 9 hours of active screen-on time under mixed usage.
+
+Q: How much does EvoPhone X cost?
+A: The base 12GB/256GB model costs 799 USD. The 512GB model costs 899 USD.
+
+Q: Does EvoPhone X support wireless charging?
+A: Yes, 15W wireless charging, in addition to 65W wired charging.
+
+Q: Is EvoPhone X waterproof?
+A: It is rated IP68, which covers submersion up to 1.5 meters for 30 minutes. Water damage is not covered by the standard warranty.
+
+Q: Can I expand the storage?
+A: No. There is no microSD slot, so choose the 256GB or 512GB configuration at purchase.
