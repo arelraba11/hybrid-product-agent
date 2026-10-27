@@ -38,7 +38,6 @@ CLAUDE.md
 
 # local runtime data (never commit)
 packages/server/history.json
-python-service/chroma_db/
 *.db
 *.db-journal
 *.db-wal

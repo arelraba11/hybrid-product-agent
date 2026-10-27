@@ -41,3 +41,18 @@ model Summary {
 
   @@map("summaries")
 }
+
+// Knowledge-base chunks for RAG. `embedding` is a Float32Array stored as raw bytes.
+// Changing EMBEDDING_MODEL requires a full reindex (`bun run index-kb`).
+model KbChunk {
+  id             Int    @id @default(autoincrement())
+  productName    String
+  sourceFile     String
+  chunkIndex     Int
+  text           String
+  embedding      Bytes
+  embeddingModel String
+
+  @@index([productName])
+  @@map("kb_chunks")
+}

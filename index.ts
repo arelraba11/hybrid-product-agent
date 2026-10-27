@@ -13,10 +13,4 @@ concurrently([
       cwd: 'packages/client',
       prefixColor: 'green',
    },
-   {
-      name: 'python',
-      command: 'python3 -m uvicorn server:app --host 0.0.0.0 --port 8000',
-      cwd: 'python-service',
-      prefixColor: 'magenta',
-   },
 ]);

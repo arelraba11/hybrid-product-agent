@@ -1,53 +1,27 @@
 import { llmClient } from '../../llm/client';
 import { RAG_GENERATION_PROMPT } from '../../prompts/prompts';
-
-const PY_KB_URL = process.env.PY_KB_URL || 'http://localhost:8000/search_kb';
-
-type KbChunk = {
-   text: string;
-   metadata?: Record<string, unknown>;
-   distance?: number;
-};
-
-type SearchKbResponse = {
-   chunks: KbChunk[];
-};
+import { searchKb } from '../kb/searchKb';
+import type { KbHit } from '../kb/vectorSearch';
 
 async function retrieveProductChunks(
    productName: string,
    query: string,
    topK = 4
-): Promise<KbChunk[]> {
+): Promise<KbHit[]> {
    console.time('rag:retrieval');
    try {
-      const res = await fetch(PY_KB_URL, {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-            query,
-            product_name: productName,
-            top_k: topK,
-         }),
-      });
-
-      if (!res.ok) {
-         const text = await res.text().catch(() => '');
-         throw new Error(`KB search failed (${res.status}): ${text}`);
-      }
-
-      const payload = (await res.json()) as SearchKbResponse;
-      return payload.chunks ?? [];
+      return await searchKb(query, productName, topK);
    } finally {
       console.timeEnd('rag:retrieval');
    }
 }
 
-function buildChunksText(chunks: KbChunk[]): string {
+function buildChunksText(chunks: KbHit[]): string {
    if (!chunks.length) return 'No relevant chunks found.';
 
    return chunks
       .map((chunk, idx) => {
-         const src = String(chunk.metadata?.source_file ?? 'unknown_source');
+         const src = chunk.metadata.source_file;
          return `Chunk ${idx + 1} (source: ${src})\n${chunk.text}`;
       })
       .join('\n\n');
@@ -56,7 +30,7 @@ function buildChunksText(chunks: KbChunk[]): string {
 async function generateAnswer(
    productName: string,
    query: string,
-   chunks: KbChunk[]
+   chunks: KbHit[]
 ): Promise<string> {
    console.time('rag:generation');
    try {
