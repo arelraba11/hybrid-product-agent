@@ -2,7 +2,6 @@ import express from 'express';
 import dotenv from 'dotenv';
 import router from './routes';
 import { historyRepository } from './repositories/history.repository';
-import { callLocalLLM as callLocalLLMImpl } from './llm/ollama.client';
 
 dotenv.config();
 
@@ -27,8 +26,3 @@ const startServer = async () => {
 };
 
 startServer();
-
-// Exported for usage across the project (assignment requirement)
-export async function callLocalLLM(prompt: string) {
-   return callLocalLLMImpl(prompt);
-}
