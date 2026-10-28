@@ -57,10 +57,11 @@ All three runs use the same planner prompt (`classifierPromptLocal` before step 
 
 Default config, `--runs 3`, one row per step. Δ is against the 80/90 reference above; ±2 is noise.
 
-| Step                               | Commit    | Overall         | Δ   | tools / derived / judge | Fallback | Templated | Hardcode price |
-| ---------------------------------- | --------- | --------------- | --- | ----------------------- | -------- | --------- | -------------- |
-| reference                          | `6c3f98a` | 80/90 (89%)     | —   | 81 / 18/21 / 26/27      | 7%       | 14%       | 23%            |
-| 3.1 token/prefix KB product filter | `bbe2251` | **76/90 (84%)** | −4  | 81 / 19/21 / 24/27      | 7%       | 17%       | 20%            |
+| Step                                 | Commit    | Overall         | Δ   | tools / derived / judge | Fallback | Templated | Hardcode price |
+| ------------------------------------ | --------- | --------------- | --- | ----------------------- | -------- | --------- | -------------- |
+| reference                            | `6c3f98a` | 80/90 (89%)     | —   | 81 / 18/21 / 26/27      | 7%       | 14%       | 23%            |
+| 3.1 token/prefix KB product filter   | `bbe2251` | **76/90 (84%)** | −4  | 81 / 19/21 / 24/27      | 7%       | 17%       | 20%            |
+| 3.2 remove `knownUsdPriceForProduct` | `d91c5b0` | **78/90 (87%)** | −2  | 81 / 21/21 / 24/27      | 7%       | 16%       | — (removed)    |
 
 **3.1:** the filter now resolves `BrewMaster Y` → `brewmaster y coffee machine` and `NeoBook Air 14` → `neobook air 14 laptop`. `EvoPhone Z` / `PixelPad Pro` match nothing and use the global search, as before. Retrieval for "What is the price in USD?" + NeoBook used to return ElectroRide/PrintForge/Skyline chunks and now returns only NeoBook chunks. `mt-total-brewmaster-neobook`: NeoBook's `numericValue` is **1099** (`output`, was 14), the answer is 5,430 ILS, and **derived goes 0 → 3/3**. The case still fails on tools (the `sanitizeRoute` 5-step rewrite, phase 4).
 
@@ -70,6 +71,8 @@ The −4 is outside the noise band, but neither losing case passes through code 
 - `up-pixelpad-budget` 2 → 0: no name matches, so global search, the same as before. The RAG wording was "The KB does not contain pricing…" in all 3 runs. The math evaluated that to 1000, and the templated "You will have 1000 ILS remaining." fired. The reference notes the same wording-dependent variance. 3.3 removes the template.
 
 **Found (pre-existing, `policy.ts`, phase 4):** in budget questions that mention "ILS", `looksLikeExchangeQuestion` appends `getExchangeRate` _after_ the planner's math step. The budget branch then reads `exchangeIndex` before filtering out `calculateMath`. The stale index makes the rebuilt math reference itself (`<result_from_tool_3>` → empty), so the math step fails and synthesis does the arithmetic (`mt-missing-aurora`, `mt-missing-evophone`). The reference run has the same expressions.
+
+**3.2:** within noise. Every product price that used to come from the table now comes from the RAG output (`numericSource: output`): PrintForge 25, EvoPhone X 799, BrewMaster 349, NeoBook 1099. All `hardcode-sensitive` budget/total cases keep their numbers, derived is **21/21** (was 18/21 in the reference, 19/21 after 3.1), and `mt-budget-printforge` stays 3/3 (math `100 - ((25) * 3.75)`, with 25 now from RAG). `mt-missing-aurora` is back to 3/3 (variance, as above). Changes: `up-pixelpad-budget` 0 → 1 (the templated answer still fires on 2 runs, 3.3) and `amb-drone-price` 3 → 2 (judge: the answer adds the KB's Fly More Kit price; the drone was never in the table).
 
 ## Step 2.6: planner prompt fix (`006458d`)
 
