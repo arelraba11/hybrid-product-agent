@@ -45,18 +45,35 @@ Output: {"plan":[{"tool":"getExchangeRate","parameters":{"currencyCode":"USD"}},
 User input:
 {{USER_INPUT}}`;
 
+// Examples deliberately avoid golden-set inputs (evals/cases.json): other cities, currencies,
+// numbers and a product that is not in the KB, so the eval doesn't measure memorization.
 export const classifierPromptLocal = `You are a router planner.
 Return ONLY one line JSON with this exact schema:
-{"plan":[{"tool":"generalChat","parameters":{"userInput":""}}],"final_answer_synthesis_required":false}
+{"plan":[{"tool":"<tool>","parameters":{...}}],"final_answer_synthesis_required":false}
 
-Allowed tools: getWeather, calculateMath, getExchangeRate, analyzeReview, getProductInformation, generalChat
+Tools and their exact parameter names (use these keys, nothing else):
+- getWeather: {"city":"<city name>"}
+- getExchangeRate: {"currencyCode":"<USD|EUR|GBP>"} (rate to ILS)
+- calculateMath: {"expression":"<arithmetic expression>"}
+- analyzeReview: {"reviewText":"<the review text>"}
+- getProductInformation: {"product_name":"<product name>","query":"<the question>"}
+- generalChat: {"userInput":"<the user message>"}
+
+Examples:
+Weather in Tokyo? => {"plan":[{"tool":"getWeather","parameters":{"city":"Tokyo"}}],"final_answer_synthesis_required":false}
+What is the GBP rate? => {"plan":[{"tool":"getExchangeRate","parameters":{"currencyCode":"GBP"}}],"final_answer_synthesis_required":false}
+What is 12 * 9 + 4? => {"plan":[{"tool":"calculateMath","parameters":{"expression":"12 * 9 + 4"}}],"final_answer_synthesis_required":false}
+Analyze this review: 'Great sound, but the app keeps crashing.' => {"plan":[{"tool":"analyzeReview","parameters":{"reviewText":"Great sound, but the app keeps crashing."}}],"final_answer_synthesis_required":false}
+Does the Nimbus Kettle K2 have auto shut-off? => {"plan":[{"tool":"getProductInformation","parameters":{"product_name":"Nimbus Kettle K2","query":"Does the Nimbus Kettle K2 have auto shut-off?"}}],"final_answer_synthesis_required":false}
+Write a haiku about autumn. => {"plan":[{"tool":"generalChat","parameters":{"userInput":"Write a haiku about autumn."}}],"final_answer_synthesis_required":false}
+I have 900 ILS and want a 60 GBP jacket. How many ILS are left? => {"plan":[{"tool":"getExchangeRate","parameters":{"currencyCode":"GBP"}},{"tool":"calculateMath","parameters":{"expression":"900 - (60 * <result_from_tool_1>)"}}],"final_answer_synthesis_required":true}
 
 Rules:
 - Multi-intent requests => multiple steps.
 - Use placeholders like <result_from_tool_1> when chaining values.
 - For product-specific factual questions => getProductInformation.
 - For unknown/general requests => generalChat.
-- No markdown, no explanations.
+- Output raw JSON only: no code fences (no \`\`\`), no markdown, no explanations.
 
 INPUT: {{USER_INPUT}}
 RESPONSE JSON:`;
