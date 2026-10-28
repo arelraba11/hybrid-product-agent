@@ -10,6 +10,8 @@ import type {
 
 type OllamaGenerateResponse = {
    response: string;
+   /** Thinking models: the reasoning trace, split out of `response` by Ollama's parser. */
+   thinking?: string;
    prompt_eval_count?: number;
    eval_count?: number;
 };
@@ -54,6 +56,8 @@ export async function generateOllama(
          prompt,
          stream: false,
          format: toOllamaFormat(responseFormat),
+         // Only when configured: models without the thinking capability reject `think: true`.
+         ...(cfg.think !== undefined && { think: cfg.think }),
          options,
       }),
    });
@@ -68,8 +72,10 @@ export async function generateOllama(
    const data = (await res.json()) as OllamaGenerateResponse;
    const hasUsage =
       data.prompt_eval_count !== undefined || data.eval_count !== undefined;
+   // eval_count includes thinking tokens; Ollama reports no separate count, so only its length is kept.
    return {
       text: data.response,
+      ...(data.thinking && { thinkingChars: data.thinking.length }),
       usage: hasUsage
          ? {
               inputTokens: data.prompt_eval_count ?? 0,

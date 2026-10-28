@@ -51,6 +51,7 @@ const COMPONENT_SUFFIXES = [
    'MODEL',
    'MAX_TOKENS',
    'REASONING_EFFORT',
+   'THINK',
 ];
 
 /**

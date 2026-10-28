@@ -1,5 +1,5 @@
 // packages/server/llm/config.ts
-// Per-component provider config: <COMPONENT>_PROVIDER, _MODEL, _MAX_TOKENS, _REASONING_EFFORT.
+// Per-component provider config: <COMPONENT>_PROVIDER, _MODEL, _MAX_TOKENS, _REASONING_EFFORT, _THINK.
 // Plus LLM_TIMEOUT_MS, a per-call timeout shared by every component and embeddings.
 import { z } from 'zod';
 import {
@@ -60,6 +60,10 @@ const componentSchema = z.object({
    model: z.string().trim().min(1),
    maxTokens: z.coerce.number().int().positive().optional(),
    reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
+   think: z
+      .enum(['true', 'false'])
+      .transform((v) => v === 'true')
+      .optional(),
 });
 
 function readComponent(
@@ -74,6 +78,7 @@ function readComponent(
       model: env[`${prefix}_MODEL`] || defaults.model,
       maxTokens: env[`${prefix}_MAX_TOKENS`] || undefined,
       reasoningEffort: env[`${prefix}_REASONING_EFFORT`] || undefined,
+      think: env[`${prefix}_THINK`] || undefined,
    });
 
    if (!parsed.success) {
@@ -105,6 +110,9 @@ export function describeLlmConfig(): string {
       const extras = [
          cfg.maxTokens ? `maxTokens=${cfg.maxTokens}` : null,
          cfg.reasoningEffort ? `effort=${cfg.reasoningEffort}` : null,
+         cfg.think !== undefined && cfg.provider === 'ollama'
+            ? `think=${cfg.think}`
+            : null,
       ].filter(Boolean);
       return `  ${c.padEnd(16)} ${cfg.provider}/${cfg.model}${extras.length ? ` (${extras.join(', ')})` : ''}`;
    });

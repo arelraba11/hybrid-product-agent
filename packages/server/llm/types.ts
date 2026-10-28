@@ -31,6 +31,8 @@ export type ComponentConfig = {
    model: string;
    maxTokens?: number;
    reasoningEffort?: ReasoningEffort;
+   /** Ollama only. Sent as `think` only when set; unset leaves the model default (phi3 rejects `think: true`). */
+   think?: boolean;
 };
 
 // json_schema: the zod schema is the single source of truth for the structured output.
@@ -41,8 +43,15 @@ export type ResponseFormat =
 
 export type LlmUsage = { inputTokens: number; outputTokens: number };
 
-/** What a provider returns; `llm.generate` unwraps it to plain text for callers. */
-export type ProviderResult = { text: string; usage: LlmUsage | null };
+/**
+ * What a provider returns; `llm.generate` unwraps it to plain text for callers.
+ * thinkingChars: length of a separate reasoning trace (Ollama `thinking`), trace-only, never the text.
+ */
+export type ProviderResult = {
+   text: string;
+   usage: LlmUsage | null;
+   thinkingChars?: number;
+};
 
 export type GenerateOptions = {
    prompt: string;

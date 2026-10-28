@@ -12,6 +12,8 @@ export type LlmCall = {
    inputTokens: number | null;
    outputTokens: number | null;
    costUsd: number | null;
+   /** Length of the model's separate thinking trace, when it returned one (Ollama thinking models). */
+   thinkingChars?: number;
    error?: string;
 };
 

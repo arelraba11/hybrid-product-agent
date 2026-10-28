@@ -49,13 +49,18 @@ export const llm = {
       const signal = AbortSignal.timeout(LLM_TIMEOUT_MS);
 
       try {
-         const { text, usage } = await callProvider(cfg, opts, signal);
+         const { text, usage, thinkingChars } = await callProvider(
+            cfg,
+            opts,
+            signal
+         );
          recordLlmCall({
             ...base,
             latencyMs: performance.now() - start,
             inputTokens: usage?.inputTokens ?? null,
             outputTokens: usage?.outputTokens ?? null,
             costUsd: costFor(cfg.provider, cfg.model, usage),
+            ...(thinkingChars !== undefined && { thinkingChars }),
          });
          return text;
       } catch (err) {
