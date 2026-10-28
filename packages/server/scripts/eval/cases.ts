@@ -44,7 +44,7 @@ const DerivedSchema = z
       budget: z.number().optional(),
       amount: z.number().optional(),
       products: z.array(z.string().min(1)).optional(), // data/products file stems
-      tolerance: z.number().positive().optional(),
+      tolerance: z.number().positive().optional(), // absolute ILS; default max(1, 0.5% of expected)
    })
    .strict()
    .refine(

@@ -189,7 +189,9 @@ function scoreDerived(c: EvalCase, trace: RouterTrace): Score | null {
 
    const usd = (d.products ?? []).reduce((sum, p) => sum + kbPriceUsd(p), 0);
    const expected = expectedValue(d, rate, usd);
-   const tolerance = d.tolerance ?? 0.01;
+   // Synthesis rounds money ("about 2,154 ILS"), so the default is relative:
+   // max(1 ILS, 0.5% of the expected value). A case's `tolerance` overrides it (absolute).
+   const tolerance = d.tolerance ?? Math.max(1, Math.abs(expected) * 0.005);
 
    // Sign-insensitive: "short by 583.75" and "-583.75" both count.
    const numbers = (

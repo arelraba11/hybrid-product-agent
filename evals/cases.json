@@ -275,7 +275,7 @@
          "id": "mt-missing-evophone",
          "category": "multi-tool",
          "tags": ["fx-static", "hardcode-sensitive"],
-         "input": "I have 2500 ILS. How much am I missing to buy the EvoPhone X?",
+         "input": "I have 1500 ILS. How much am I missing to buy the EvoPhone X?",
          "expect": {
             "tools": [
                "getProductInformation",
@@ -290,7 +290,7 @@
             },
             "derived": {
                "kind": "missing_ils",
-               "budget": 2500,
+               "budget": 1500,
                "products": ["evophone_x"]
             }
          }
