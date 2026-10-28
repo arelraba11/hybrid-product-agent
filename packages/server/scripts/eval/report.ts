@@ -33,10 +33,9 @@ export type Summary = {
    latencyMs: { p50: number | null; p95: number | null };
    tokens: { input: number; output: number };
    costUsd: { router: number | null; judge: number | null };
-   fallbackRate: number; // plannerSource !== 'primary' (tools: escalation rate)
-   plannerFailedRate: number; // both planners/attempts failed
-   /** AGENT=tools runs only. */
-   agent: AgentSummary | null;
+   fallbackRate: number; // plannerSource !== 'primary' (escalated to plannerFallback)
+   plannerFailedRate: number; // both attempts failed
+   agent: AgentSummary | null; // null for pre-4.3 (legacy) results files
    crashes: number;
 };
 
@@ -52,40 +51,42 @@ type AgentSummary = {
    chatAnswerRate: number; // runs answered by chat (no tool ran)
 };
 
+// Results files from before phase 4.3 (legacy agent) have no `agent` trace.
 function summarizeAgent(traces: RouterTrace[]): AgentSummary | null {
-   const agents = traces.flatMap((t) => (t.agent ? [t] : []));
-   if (!agents.length) return null;
-   const n = agents.length;
+   const runs = traces.flatMap((t) =>
+      t.agent ? [{ agent: t.agent, answerSource: t.answerSource }] : []
+   );
+   if (!runs.length) return null;
+   const n = runs.length;
+   const share = (pred: (r: (typeof runs)[number]) => boolean) =>
+      runs.filter(pred).length / n;
 
-   const iterations = agents.flatMap((t) =>
-      t.agent!.attempts.flatMap((a) => a.iterations)
+   const iterations = runs.flatMap((r) =>
+      r.agent.attempts.flatMap((a) => a.iterations)
    );
    const calls = iterations.flatMap((it) => it.toolCalls);
    const escalationReasons: Record<string, number> = {};
-   for (const t of agents) {
-      const kind = t.agent!.escalation?.kind;
+   for (const { agent } of runs) {
+      const kind = agent.escalation?.kind;
       if (kind) escalationReasons[kind] = (escalationReasons[kind] ?? 0) + 1;
    }
 
    return {
       runs: n,
-      repairRate: agents.filter((t) => t.agent!.repairs.length).length / n,
-      escalationRate: agents.filter((t) => t.agent!.escalation).length / n,
+      repairRate: share((r) => r.agent.repairs.length > 0),
+      escalationRate: share((r) => r.agent.escalation !== undefined),
       escalationReasons,
-      failedRate:
-         agents.filter((t) => t.agent!.outcome === 'failed').length / n,
+      failedRate: share((r) => r.agent.outcome === 'failed'),
       meanIterations: iterations.length / n,
       invalidCallRate: calls.length
          ? calls.filter((c) => c.error).length / calls.length
          : 0,
-      textToolCallRate:
-         agents.filter((t) =>
-            t.agent!.attempts.some((a) =>
-               a.iterations.some((it) => it.textToolCall)
-            )
-         ).length / n,
-      chatAnswerRate:
-         agents.filter((t) => t.answerSource === 'chat').length / n,
+      textToolCallRate: share((r) =>
+         r.agent.attempts.some((a) =>
+            a.iterations.some((it) => it.textToolCall)
+         )
+      ),
+      chatAnswerRate: share((r) => r.answerSource === 'chat'),
    };
 }
 
@@ -149,10 +150,7 @@ export function summarize(results: CaseResult[]): Summary {
          traces.filter((t) => t.plannerSource !== 'primary').length
       ),
       plannerFailedRate: fraction(
-         traces.filter(
-            (t) =>
-               t.plannerSource === 'generalChat' || t.plannerSource === 'failed'
-         ).length
+         traces.filter((t) => t.plannerSource === 'failed').length
       ),
       agent: summarizeAgent(traces),
       crashes: runs.filter(({ run }) => run.error !== undefined).length,

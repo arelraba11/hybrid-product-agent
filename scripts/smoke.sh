@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Smoke test: posts the 5 README scenarios to a running server (`bun run dev`, port 3000).
 # Usage: ./scripts/smoke.sh   (needs jq; URL=... to override the endpoint)
-# Watch the server terminal for "RAW PLAN FROM PLANNER" (local planner worked) vs
-# "Planner failed, falling back" (escalated to plannerFallback).
+# Watch the server terminal for "[agent] escalating to plannerFallback" (the local planner
+# failed: validation after a repair, timeout, truncated/empty output, too many iterations).
 set -euo pipefail
 URL=${URL:-http://localhost:3000/api/chat}
 
@@ -14,7 +14,7 @@ scenarios=(
   "What is the average battery life of EvoPhone X?"
 )
 
-# Plus one general-chat prompt (exercises the CHAT component, no stop sequences).
+# Plus one general-chat prompt (no tool needed -> CHAT component).
 scenarios+=("Explain in two short paragraphs what a data lakehouse is.")
 
 for s in "${scenarios[@]}"; do

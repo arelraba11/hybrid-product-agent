@@ -1,5 +1,5 @@
 // Eval runner. From the repo root:
-//   bun run eval --config evals/configs/openai-only.env --runs 3 [--agent legacy|tools] [--filter <id|category|tag>] [--verbose]
+//   bun run eval --config evals/configs/openai-only.env --runs 3 [--filter <id|category|tag>] [--verbose]
 //   bun run eval --rescore evals/results/<file>.json   (re-score saved traces offline, no LLM calls)
 // Runs every case in-process through routerService with an isolated in-memory history,
 // scores it, prints a summary and writes raw results (with traces) to evals/results/.
@@ -24,7 +24,6 @@ const { values: args } = parseArgs({
       config: { type: 'string' },
       runs: { type: 'string', default: '1' },
       filter: { type: 'string' },
-      agent: { type: 'string', default: 'legacy' },
       verbose: { type: 'boolean', default: false },
       rescore: { type: 'string' },
    },
@@ -37,7 +36,7 @@ if (args.rescore) {
 
 if (!args.config) {
    console.error(
-      'Usage: bun run eval --config evals/configs/<name>.env [--runs N] [--agent legacy|tools] [--filter id|category|tag] [--verbose]\n       bun run eval --rescore evals/results/<file>.json'
+      'Usage: bun run eval --config evals/configs/<name>.env [--runs N] [--filter id|category|tag] [--verbose]\n       bun run eval --rescore evals/results/<file>.json'
    );
    process.exit(1);
 }
@@ -45,12 +44,6 @@ if (!args.config) {
 const runsPerCase = Number(args.runs);
 if (!Number.isInteger(runsPerCase) || runsPerCase < 1) {
    console.error(`--runs must be a positive integer (got ${args.runs})`);
-   process.exit(1);
-}
-
-const agentMode = args.agent;
-if (agentMode !== 'legacy' && agentMode !== 'tools') {
-   console.error(`--agent must be legacy or tools (got ${agentMode})`);
    process.exit(1);
 }
 
@@ -97,9 +90,6 @@ function applyConfig(file: string): Record<string, string> {
 }
 
 const configVars = applyConfig(configPath);
-// Set before the server import (services/agent/config reads it then), and always from the
-// flag, so an AGENT in packages/server/.env never leaks into a run.
-process.env.AGENT = agentMode;
 
 // Imported only now: llm/config reads process.env at import time.
 const { routerService } = await import('../services/router.service');
@@ -209,7 +199,7 @@ const configName = path.basename(configPath).replace(/\.env$/, '');
 const startedAt = new Date();
 
 print(
-   `Eval: ${cases.length} cases × ${runsPerCase} runs, config ${configName}, agent ${agentMode} (${gitSha})`
+   `Eval: ${cases.length} cases × ${runsPerCase} runs, config ${configName} (${gitSha})`
 );
 print(`LLM components:\n${describeLlmConfig()}\n`);
 
@@ -249,10 +239,7 @@ print(`\n${formatReport(results, summary)}`);
 
 const stamp = startedAt.toISOString().replace(/[:T]/g, '-').slice(0, 19);
 const outDir = path.join(REPO_ROOT, 'evals/results');
-const outFile = path.join(
-   outDir,
-   `${stamp}-${configName}${agentMode === 'tools' ? '-tools' : ''}.json`
-);
+const outFile = path.join(outDir, `${stamp}-${configName}.json`);
 mkdirSync(outDir, { recursive: true });
 writeFileSync(
    outFile,
@@ -264,7 +251,6 @@ writeFileSync(
             gitSha,
             config: path.relative(REPO_ROOT, configPath),
             configVars,
-            agent: agentMode,
             runsPerCase,
             filter: filter ?? null,
          },

@@ -1,14 +1,14 @@
-// AGENT=tools request path: agent loop → synthesis (any tool ran, or the agent failed)
+// Request path: agent loop → synthesis (any tool ran, or the agent failed)
 // or chat (no tool needed).
 import { collectLlmCalls, llm } from '../../llm';
 import { llmConfig } from '../../llm/config';
 import { AGENT_SYNTHESIS_PROMPT } from '../../prompts/prompts';
 import type { HistoryStore } from '../../repositories/history.repository';
 import { generalChat } from '../apps/general.app';
-import type { RouterTrace, StepTrace } from '../router/types';
+import type { RouterTrace, StepTrace, ToolName } from '../router/types';
 import { AGENT_MAX_ITERATIONS } from './config';
 import { runAgent, type AgentFailure, type AgentStep } from './loop';
-import { TOOLS, type AgentToolName } from './tools';
+import { TOOLS } from './tools';
 
 /** The trace fields a request path fills in; routerService adds timing and totals. */
 export type PathTrace = Omit<
@@ -46,15 +46,14 @@ async function synthesize(
    return text.trim();
 }
 
-function toStepTrace(s: AgentStep<AgentToolName>): StepTrace {
+function toStepTrace(s: AgentStep<ToolName>): StepTrace {
    return {
       step: s.step,
       tool: s.tool,
       parameters: s.parameters,
+      ok: s.ok,
       output: s.output,
       numericValue: s.numericValue,
-      ok: s.ok,
-      numericSource: s.numericValue != null ? 'tool' : null,
       latencyMs: s.latencyMs,
       llmCalls: s.llmCalls,
    };
@@ -85,9 +84,8 @@ export async function handleWithAgent(
 
    return {
       message,
-      intent: run.steps[0]?.tool ?? 'generalChat',
+      intent: run.steps[0]?.tool ?? 'chat',
       trace: {
-         agentMode: 'tools',
          plannerSource,
          plannerErrors: run.attempts.flatMap((a) =>
             a.failure

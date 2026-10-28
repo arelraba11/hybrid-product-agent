@@ -8,7 +8,6 @@ export const COMPONENTS = [
    'rag',
    'reviews',
    'synthesis',
-   'math',
    'judge',
 ] as const;
 export type Component = (typeof COMPONENTS)[number];
@@ -57,8 +56,6 @@ export type GenerateOptions = {
    prompt: string;
    temperature?: number;
    responseFormat?: ResponseFormat;
-   /** Stop sequences. Honored by Ollama only (the Responses API has no stop parameter). */
-   stop?: string[];
 };
 
 // ---- Tool calling (llm.chat) ----

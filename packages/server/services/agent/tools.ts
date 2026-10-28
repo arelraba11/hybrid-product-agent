@@ -45,9 +45,7 @@ const text = (ok: boolean, output: string): ToolResult => ({
    numericValue: null,
 });
 
-export type AgentToolName = Exclude<ToolName, 'generalChat'>;
-
-export const TOOLS: AgentTool<AgentToolName>[] = [
+export const TOOLS: AgentTool<ToolName>[] = [
    defineTool({
       name: 'getWeather',
       description:

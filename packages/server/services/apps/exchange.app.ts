@@ -66,20 +66,6 @@ async function rateToIls(
    }
 }
 
-function extractAmount(input: string): number | null {
-   // Matches: "10$", "$10", "10 USD", "10usd"
-   let match = input.match(/(\d+(?:\.\d+)?)\s*\$/);
-   if (match) return Number(match[1]);
-
-   match = input.match(/\$\s*(\d+(?:\.\d+)?)/);
-   if (match) return Number(match[1]);
-
-   match = input.match(/(\d+(?:\.\d+)?)\s*(USD|EUR|GBP|ILS)\b/i);
-   if (match) return Number(match[1]);
-
-   return null;
-}
-
 export type ExchangeResult = {
    ok: boolean;
    text: string;
@@ -117,7 +103,6 @@ export async function exchangeToIls(
       };
    }
 
-   // "rate N" must come first: the legacy router parses the rate from it (extractNumericValue).
    const { rate, date, stale } = live;
    const source = `rate ${rate}, ECB reference rate of ${date}${stale ? ', cached: live update unavailable' : ''}`;
 
@@ -137,13 +122,4 @@ export async function exchangeToIls(
    }
 
    return { ok: true, text: `1 ${code} = ${rate} ILS (${source})`, rate };
-}
-
-/** Legacy router: the amount is the first "N USD|EUR|GBP|ILS" in the user input. */
-export async function getExchangeRate(
-   currencyCode: string,
-   userInput?: string
-): Promise<string> {
-   const amount = userInput ? extractAmount(userInput) : null;
-   return (await exchangeToIls(currencyCode, amount)).text;
 }

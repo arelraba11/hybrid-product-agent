@@ -12,44 +12,25 @@ export type ToolName =
    | 'calculateMath'
    | 'getExchangeRate'
    | 'analyzeReview'
-   | 'getProductInformation'
-   | 'generalChat';
-
-export type RouterPlanStep = {
-   tool: ToolName;
-   parameters: Record<string, unknown>;
-};
-
-export type RouterPlan = {
-   plan: RouterPlanStep[];
-   final_answer_synthesis_required: boolean;
-};
-
-export type ExecutedStep = {
-   step: number;
-   tool: ToolName;
-   parameters: Record<string, unknown>;
-   output: string;
-   numericValue: number | null;
-};
+   | 'getProductInformation';
 
 // ---- Trace (observability only; never feeds back into routing) ----
 
-/**
- * legacy: primary planner / fallback planner / both failed → generalChat.
- * tools: primary attempt / escalated to plannerFallback / both attempts failed.
- */
-export type PlannerSource = 'primary' | 'fallback' | 'generalChat' | 'failed';
+/** primary attempt / escalated to plannerFallback / both attempts failed. */
+export type PlannerSource = 'primary' | 'fallback' | 'failed';
 
-/** 'output' = parsed from the tool output (legacy); 'tool' = returned by the tool (agent). */
-export type NumericSource = 'output' | 'tool';
+/** synthesis: a tool ran or the agent failed; chat: no tool was needed. */
+export type AnswerSource = 'synthesis' | 'chat';
 
-export type AnswerSource = 'synthesis' | 'lastStep' | 'chat';
-
-export type StepTrace = ExecutedStep & {
-   /** Agent only: false = the tool ran but could not produce the fact. */
-   ok?: boolean;
-   numericSource: NumericSource | null;
+export type StepTrace = {
+   step: number;
+   tool: ToolName;
+   parameters: Record<string, unknown>;
+   /** false = the tool ran but could not produce the fact. */
+   ok: boolean;
+   output: string;
+   /** Returned by the tool: the rate (getExchangeRate) or the result (calculateMath). */
+   numericValue: number | null;
    latencyMs: number;
    llmCalls: LlmCall[];
 };
@@ -71,13 +52,10 @@ export type AgentTrace = {
 
 export type RouterTrace = {
    input: string;
-   agentMode: 'legacy' | 'tools';
    plannerSource: PlannerSource;
    plannerErrors: string[];
    plannerCalls: LlmCall[];
-   rawPlan?: RouterPlan; // legacy: planner output
-   plan?: RouterPlan; // legacy: after sanitizeRoute
-   agent?: AgentTrace; // tools only
+   agent: AgentTrace;
    steps: StepTrace[];
    answerSource: AnswerSource;
    finalAnswer: string;

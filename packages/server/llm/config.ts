@@ -40,7 +40,6 @@ const ENV_PREFIX: Record<Component, string> = {
    rag: 'RAG',
    reviews: 'REVIEWS',
    synthesis: 'SYNTHESIS',
-   math: 'MATH',
    judge: 'JUDGE',
 };
 
@@ -51,7 +50,6 @@ const DEFAULTS: Record<Component, { provider: Provider; model: string }> = {
    rag: { provider: 'openai', model: 'gpt-5.4-mini' },
    reviews: { provider: 'openai', model: 'gpt-5.4-mini' },
    synthesis: { provider: 'openai', model: 'gpt-5.4-mini' },
-   math: { provider: 'openai', model: 'gpt-5.4-mini' },
    judge: { provider: 'openai', model: 'gpt-5.4-mini' },
 };
 

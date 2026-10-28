@@ -49,13 +49,6 @@ async function generateAnswer(
    }
 }
 
-export async function getProductInformation(
-   productName: string,
-   query: string
-): Promise<string> {
-   return (await productInformation(productName, query)).text;
-}
-
 /** ok: false only when retrieval or generation fails; "not in the KB" is a valid answer. */
 export async function productInformation(
    productName: string,

@@ -59,9 +59,9 @@ function fmtTools(tools: readonly string[]) {
    return tools.length ? tools.join(' → ') : '(none)';
 }
 
-/** Executed tools, ignoring generalChat (expect.tools: [] means "no tools"). */
+/** Executed tools, in order (expect.tools: [] means "no tools"). */
 export function executedTools(trace: RouterTrace): ToolName[] {
-   return trace.steps.map((s) => s.tool).filter((t) => t !== 'generalChat');
+   return trace.steps.map((s) => s.tool);
 }
 
 function countTools(tools: readonly string[]): Map<string, number> {
@@ -260,9 +260,7 @@ function grounds(source: number, token: string): boolean {
  * rounding. Applies only when tools ran (not to chat answers). Measurement only for now.
  */
 function scoreGroundedNumbers(trace: RouterTrace): Score | null {
-   const outputs = trace.steps
-      .filter((s) => s.tool !== 'generalChat')
-      .map((s) => s.output);
+   const outputs = trace.steps.map((s) => s.output);
    if (!outputs.length) return null;
 
    const numbersIn = (text: string) =>

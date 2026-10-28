@@ -12,9 +12,9 @@ function step(tool: ToolName, output = ''): StepTrace {
       step: 0,
       tool,
       parameters: {},
+      ok: true,
       output,
       numericValue: null,
-      numericSource: null,
       latencyMs: 0,
       llmCalls: [],
    };
@@ -27,10 +27,10 @@ function trace(
 ): RouterTrace {
    return {
       input,
-      agentMode: 'tools',
       plannerSource: 'primary',
       plannerErrors: [],
       plannerCalls: [],
+      agent: { outcome: 'done', attempts: [], repairs: [] },
       steps,
       answerSource: 'synthesis',
       finalAnswer,

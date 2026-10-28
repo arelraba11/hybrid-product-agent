@@ -43,7 +43,7 @@ export function rescore(file: string): void {
 
    const summary = summarize(results);
    console.log(
-      `Rescored ${path.relative(REPO_ROOT, file)} (${String(data.meta.config)}, agent ${String(data.meta.agent ?? 'legacy')}, ${String(data.meta.gitSha)})\n`
+      `Rescored ${path.relative(REPO_ROOT, file)} (${String(data.meta.config)}, ${String(data.meta.gitSha)})\n`
    );
    console.log(formatReport(results, summary));
 

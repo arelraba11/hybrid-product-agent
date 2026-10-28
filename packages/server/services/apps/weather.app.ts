@@ -13,10 +13,6 @@ function codeToText(code?: number): string {
    return 'mixed conditions';
 }
 
-export async function getWeather(city: string): Promise<string> {
-   return (await weatherFor(city)).text;
-}
-
 /** ok: false when the city is unknown or a weather API call fails. */
 export async function weatherFor(
    city: string

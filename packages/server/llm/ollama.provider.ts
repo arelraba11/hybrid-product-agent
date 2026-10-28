@@ -42,7 +42,6 @@ type OllamaChatResponse = Counts & {
 type OllamaOptions = {
    temperature?: number;
    num_predict?: number;
-   stop?: string[];
 };
 
 // Ollama's `format` accepts "json" or a JSON schema.
@@ -61,13 +60,11 @@ function toOllamaFormat(
 
 function buildOptions(
    cfg: ComponentConfig,
-   temperature?: number,
-   stop?: string[]
+   temperature?: number
 ): OllamaOptions {
    const options: OllamaOptions = {};
    if (temperature !== undefined) options.temperature = temperature;
    if (cfg.maxTokens !== undefined) options.num_predict = cfg.maxTokens;
-   if (stop?.length) options.stop = stop;
    return options;
 }
 
@@ -112,7 +109,7 @@ function usageOf(data: Counts): LlmUsage | null {
 
 export async function generateOllama(
    cfg: ComponentConfig,
-   { prompt, temperature, stop, responseFormat }: GenerateOptions,
+   { prompt, temperature, responseFormat }: GenerateOptions,
    signal: AbortSignal
 ): Promise<ProviderResult> {
    const data = await postOllama<OllamaGenerateResponse>(
@@ -123,7 +120,7 @@ export async function generateOllama(
          stream: false,
          format: toOllamaFormat(responseFormat),
          ...thinkField(cfg),
-         options: buildOptions(cfg, temperature, stop),
+         options: buildOptions(cfg, temperature),
       },
       signal
    );

@@ -3,16 +3,15 @@
 This repository extends the previous `smart-bot` assignments into a hybrid agent with:
 
 - Local + cloud model routing
-- Advanced tool orchestration (multi-step plan execution)
+- Native tool calling: an agent loop over zod-defined tools (local first, one escalation to OpenAI)
 - Product knowledge base retrieval (RAG) with local embeddings
 - Per-component model config (Ollama local + OpenAI)
 
 ## Architecture Summary
 
 - `packages/server` (TypeScript + Bun)
-   - Router planner (local planner first, OpenAI fallback planner)
-   - Sequential tool orchestration with placeholder support (`<result_from_tool_X>`)
-   - Final answer synthesis when required
+   - Agent loop with native tool calling (local planner first, one escalation to the OpenAI fallback planner)
+   - Final answer synthesis from the tool results (or general chat when no tool is needed)
    - RAG retrieval in TS: Ollama `embeddinggemma` embeddings, vectors stored in SQLite
    - SQLite (Prisma) for products, reviews, the 7-day summary cache and KB chunks
 - `data/products`
@@ -26,43 +25,28 @@ Every LLM component reads `<COMPONENT>_PROVIDER` and `<COMPONENT>_MODEL` from en
 
 | Component                   | Env prefix          | Default                   |
 | --------------------------- | ------------------- | ------------------------- |
-| Router planner              | `PLANNER_`          | `ollama` / `gemma4:12b`   |
+| Agent planner (tool calls)  | `PLANNER_`          | `ollama` / `gemma4:12b`   |
 | Planner fallback            | `PLANNER_FALLBACK_` | `openai` / `gpt-5.4-mini` |
 | General chat                | `CHAT_`             | `ollama` / `gemma4:12b`   |
 | RAG answer                  | `RAG_`              | `openai` / `gpt-5.4-mini` |
 | Review analysis + summaries | `REVIEWS_`          | `openai` / `gpt-5.4-mini` |
 | Final synthesis             | `SYNTHESIS_`        | `openai` / `gpt-5.4-mini` |
-| Math word problems          | `MATH_`             | `openai` / `gpt-5.4-mini` |
 | Embeddings (always local)   | `EMBEDDING_MODEL`   | `embeddinggemma`          |
 
-The previous models (`phi3:latest`, `gpt-4o-mini`) still work by setting the `*_MODEL` vars.
+The planner model must support tool calling in Ollama (`ollama show <model>` lists `tools`). `phi3` doesn't, so the pre-phase-1 planner can no longer be used; `gpt-4o-mini` still works for the OpenAI components.
 
 ## New Core Capabilities
 
-### 1) Router as Tool Orchestrator
+### 1) Agent loop with native tool calling
 
-Router now returns a plan object:
-
-```json
-{
-   "plan": [
-      { "tool": "getExchangeRate", "parameters": { "currencyCode": "USD" } },
-      {
-         "tool": "calculateMath",
-         "parameters": { "expression": "100 - (25 * <result_from_tool_1>)" }
-      }
-   ],
-   "final_answer_synthesis_required": true
-}
-```
+Each tool (`getWeather`, `getExchangeRate`, `calculateMath`, `analyzeReview`, `getProductInformation`) is defined once in `packages/server/services/agent/tools.ts` with a zod schema. That schema is sent to the model as JSON schema (Ollama `/api/chat` tools, OpenAI Responses API function tools), and the model's arguments are validated against it before the tool runs.
 
 Execution behavior:
 
-- Parse and validate plan
-- Execute tools step-by-step
-- Resolve placeholders from previous tool outputs
-- Keep intermediate state
-- If `final_answer_synthesis_required=true`, run synthesis prompt with all intermediate results
+- The model calls tools (several per turn are allowed and run in parallel), sees the results, and decides the next step until it stops calling tools.
+- No placeholders: the model passes numbers from earlier tool results into `calculateMath` itself.
+- An invalid turn (schema error, unknown tool, tool call written as text) gets the error back once as a repair. A second failure, a timeout, truncated or empty output, or more than `AGENT_MAX_ITERATIONS` turns escalates once: the loop restarts on the OpenAI fallback planner. Every repair and escalation is in the trace.
+- If any tool ran, synthesis writes the answer from the tool results. It never does arithmetic and says which step failed. If no tool was needed, general chat answers with the conversation history.
 
 ### 2) Product RAG
 
@@ -84,12 +68,13 @@ Execution behavior:
 
 ## Project Structure (relevant files)
 
-- `packages/server/services/router.service.ts` - orchestration planner + executor
+- `packages/server/services/router.service.ts` - request entry point (history, trace)
+- `packages/server/services/agent/` - agent loop (`loop.ts`), tool definitions (`tools.ts`), answer step (`handle.ts`)
 - `packages/server/services/apps/productInformation.app.ts` - RAG app integration
 - `packages/server/services/kb/` - KB search (`searchKb`) behind a `VectorIndex` interface
 - `packages/server/scripts/index-kb.ts` - KB indexing script
 - `packages/server/llm/` - provider config + Ollama/OpenAI providers + embeddings
-- `packages/server/prompts/prompts.ts` - router / RAG / synthesis prompts
+- `packages/server/prompts/prompts.ts` - agent / synthesis / RAG / chat prompts
 - `packages/server/prisma/` - SQLite schema, migrations, dev seed
 - `data/products/*.txt` - KB source files
 
@@ -105,7 +90,7 @@ bun install
 
 ```bash
 ollama serve                 # keep running in its own terminal
-ollama pull gemma4:12b       # planner + general chat (~8 GB)
+ollama pull gemma4:12b       # planner (needs tool calling) + general chat (~8 GB)
 ollama pull embeddinggemma   # embeddings (~620 MB)
 ```
 
@@ -196,7 +181,7 @@ Historical: measured on the original course implementation (phi3 / gpt-4o-mini /
 ### Why local vs cloud model split
 
 - Local Ollama is used first for routing and general chat to reduce cost and keep latency predictable.
-- OpenAI is used as fallback and for higher-quality tasks (structured planning fallback, RAG answer generation, final synthesis).
+- OpenAI is used as fallback and for higher-quality tasks (escalated tool planning, RAG answer generation, final synthesis).
 - This split balances cost, speed, and answer quality.
 
 ### Task partitioning
@@ -208,12 +193,11 @@ Historical: measured on the original course implementation (phi3 / gpt-4o-mini /
 
 - Local models add a dependency on Ollama being up with the right models pulled.
 - Tool chaining increases complexity and error handling needs.
-- Placeholder-based orchestration is flexible but can propagate earlier step errors.
+- The agent loop adds model turns per request (latency), but every tool call is schema-validated and failures are detectable.
 - Multi-model behavior can vary across providers and needs robust fallback logic.
 
 ### Future improvements
 
-- Add stronger schema validation for router output with explicit error recovery plans.
 - Add observability dashboard for latency and success rates per tool.
 - Add multilingual embeddings and richer KB documents (PDF ingestion, metadata filtering).
 

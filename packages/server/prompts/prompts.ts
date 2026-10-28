@@ -1,108 +1,7 @@
 // prompts/prompts.ts
-// Central prompt definitions for routing, RAG, reasoning and review analysis.
+// Central prompt definitions: agent loop + synthesis, RAG, chat, review analysis, eval judge.
 
-export const classifierPrompt = `You are a routing planner for a hybrid AI assistant.
-
-You must decide which tools to run and in what order.
-Available tools:
-- getWeather(city)
-- calculateMath(expression)
-- getExchangeRate(currencyCode)
-- analyzeReview(reviewText)
-- getProductInformation(product_name, query)
-- generalChat(userInput)
-
-Return ONLY valid JSON in this schema:
-{
-  "plan": [
-    { "tool": "toolName", "parameters": { "key": "value" } }
-  ],
-  "final_answer_synthesis_required": true
-}
-
-Rules:
-- Use 1+ steps in plan.
-- Use placeholders from previous steps when needed: <result_from_tool_1>, <result_from_tool_2>, ...
-- If user asks for a single simple task, one tool is enough.
-- If user combines tasks in one sentence, add multiple tools and set final_answer_synthesis_required=true.
-- For exchange rate, currencyCode should be USD/EUR/GBP/ILS.
-- For product questions, ALWAYS use getProductInformation.
-- If request is not tool-specific, use generalChat.
-
-Few-shot examples (deliberately not golden-set inputs from evals/cases.json):
-User: "What is the weather in Berlin and what's the GBP rate today?"
-Output: {"plan":[{"tool":"getWeather","parameters":{"city":"Berlin"}},{"tool":"getExchangeRate","parameters":{"currencyCode":"GBP"}}],"final_answer_synthesis_required":true}
-
-User: "Analyze this review: The blender is loud but very powerful"
-Output: {"plan":[{"tool":"analyzeReview","parameters":{"reviewText":"The blender is loud but very powerful"}}],"final_answer_synthesis_required":false}
-
-User: "How heavy is the Orbit Lamp L4?"
-Output: {"plan":[{"tool":"getProductInformation","parameters":{"product_name":"Orbit Lamp L4","query":"How heavy is the Orbit Lamp L4?"}}],"final_answer_synthesis_required":false}
-
-User: "If I have 750 ILS and buy a 40 EUR product, how much remains?"
-Output: {"plan":[{"tool":"getExchangeRate","parameters":{"currencyCode":"EUR"}},{"tool":"calculateMath","parameters":{"expression":"750 - (40 * <result_from_tool_1>)"}}],"final_answer_synthesis_required":true}
-
-User input:
-{{USER_INPUT}}`;
-
-// Examples deliberately avoid golden-set inputs (evals/cases.json): other cities, currencies,
-// numbers and a product that is not in the KB, so the eval doesn't measure memorization.
-export const classifierPromptLocal = `You are a router planner.
-Return ONLY one line JSON with this exact schema:
-{"plan":[{"tool":"<tool>","parameters":{...}}],"final_answer_synthesis_required":false}
-
-Tools and their exact parameter names (use these keys, nothing else):
-- getWeather: {"city":"<city name>"}
-- getExchangeRate: {"currencyCode":"<USD|EUR|GBP>"} (rate to ILS)
-- calculateMath: {"expression":"<arithmetic expression>"}
-- analyzeReview: {"reviewText":"<the review text>"}
-- getProductInformation: {"product_name":"<product name>","query":"<the question>"}
-- generalChat: {"userInput":"<the user message>"}
-
-Examples:
-Weather in Tokyo? => {"plan":[{"tool":"getWeather","parameters":{"city":"Tokyo"}}],"final_answer_synthesis_required":false}
-What is the GBP rate? => {"plan":[{"tool":"getExchangeRate","parameters":{"currencyCode":"GBP"}}],"final_answer_synthesis_required":false}
-What is 12 * 9 + 4? => {"plan":[{"tool":"calculateMath","parameters":{"expression":"12 * 9 + 4"}}],"final_answer_synthesis_required":false}
-Analyze this review: 'Great sound, but the app keeps crashing.' => {"plan":[{"tool":"analyzeReview","parameters":{"reviewText":"Great sound, but the app keeps crashing."}}],"final_answer_synthesis_required":false}
-Does the Nimbus Kettle K2 have auto shut-off? => {"plan":[{"tool":"getProductInformation","parameters":{"product_name":"Nimbus Kettle K2","query":"Does the Nimbus Kettle K2 have auto shut-off?"}}],"final_answer_synthesis_required":false}
-Write a haiku about autumn. => {"plan":[{"tool":"generalChat","parameters":{"userInput":"Write a haiku about autumn."}}],"final_answer_synthesis_required":false}
-I have 900 ILS and want a 60 GBP jacket. How many ILS are left? => {"plan":[{"tool":"getExchangeRate","parameters":{"currencyCode":"GBP"}},{"tool":"calculateMath","parameters":{"expression":"900 - (60 * <result_from_tool_1>)"}}],"final_answer_synthesis_required":true}
-
-Rules:
-- Multi-intent requests => multiple steps.
-- Use placeholders like <result_from_tool_1> when chaining values.
-- For product-specific factual questions => getProductInformation.
-- For unknown/general requests => generalChat.
-- Output raw JSON only: no code fences (no \`\`\`), no markdown, no explanations.
-
-INPUT: {{USER_INPUT}}
-RESPONSE JSON:`;
-
-export const ORCHESTRATION_SYNTHESIS_PROMPT = `You are a response synthesizer for a hybrid tool-orchestration assistant.
-
-You are given:
-1) The original user question
-2) Ordered tool execution results
-
-Task:
-- Produce a single coherent final answer for the user.
-- Prefer concrete facts from tool results.
-- If there is partial failure, say what succeeded and what failed.
-- Do not invent missing facts.
-- Keep the answer concise and user-friendly.
-- Never discuss internal planning quality, router mistakes, or tool-selection critique.
-- Ignore irrelevant tool outputs that do not help answer the user's current question.
-- Do not mention previous unrelated cities/questions unless directly asked.
-
-Original user question:
-{{USER_INPUT}}
-
-Tool results JSON:
-{{TOOL_RESULTS_JSON}}
-
-Final answer:`;
-
-// Agent loop (AGENT=tools). The model only selects and runs tools; its own final text is
+// Agent loop. The model only selects and runs tools; its own final text is
 // discarded. Synthesis (tools ran) or chat (none ran) writes the answer.
 export const AGENT_SYSTEM_PROMPT = `You are the tool-calling step of an assistant for a store. You decide which tools to call. Another step writes the final answer from the tool results.
 
@@ -168,29 +67,6 @@ Answer:`;
 
 // Simpler general chat prompt for local models
 export const generalChatPromptLocal = `You are a helpful assistant. Keep answers short and clear.`;
-
-export const mathCoTPrompt = `You are a mathematical reasoning assistant. Your task is to translate word problems into mathematical expressions.
-
-Given a word problem in natural language, you must:
-1. Identify the numbers and operations mentioned
-2. Translate the problem into a clean mathematical expression
-3. Return ONLY the mathematical expression (no explanation, no words, just the expression)
-
-Examples:
-- "ליוסי יש 5 תפוחים, הוא אכל 2 וקנה עוד 10. כמה יש לו?" → "5 - 2 + 10"
-- "דני קנה 3 ספרים, כל אחד עלה 15 שקלים. כמה שילם?" → "3 * 15"
-- "יש לי 100 שקלים, הוצאתי 30 וקיבלתי עוד 20. כמה נשאר?" → "100 - 30 + 20"
-- "חלק 50 ל-5 חלקים שווים" → "50 / 5"
-
-Rules:
-- Use only numbers, operators (+, -, *, /), and parentheses
-- No variables, no words
-- Return ONLY the expression, nothing else
-
-Word problem:
-{{WORD_PROBLEM}}
-
-Mathematical expression:`;
 
 export const reviewAnalyzerPrompt = `You are an Aspect-Based Sentiment Analysis (ABSA) engine for customer reviews (restaurants, products, hotels, deliveries).
 

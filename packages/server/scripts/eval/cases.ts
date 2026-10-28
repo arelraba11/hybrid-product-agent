@@ -16,7 +16,6 @@ const TOOL_NAMES = [
    'getExchangeRate',
    'analyzeReview',
    'getProductInformation',
-   'generalChat',
 ] as const satisfies readonly ToolName[];
 
 const ToolNameSchema = z.enum(TOOL_NAMES);
