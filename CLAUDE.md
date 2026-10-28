@@ -26,16 +26,13 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 1. **Infra + model upgrade** (done; verified 2026-10-28): python-service removed (embeddings via Ollama `embeddinggemma`, vectors in SQLite with brute-force cosine in TS — no sqlite-vec), Prisma MySQL → SQLite, per-component provider config, models → `gemma4:12b` / `gpt-5.4-mini`, Responses API structured output. Planner + chat run on `gemma4:12b` (needs `PLANNER_THINK`/`CHAT_THINK=false`) and on `phi3` (legacy). All 5 README smoke scenarios work on the default config since step 2.6.
 2. **Eval harness** (done 2026-10-28; openai-only, default and legacy baselines in `evals/BASELINE.md`): richer KB + 3 new products, router trace, golden set (`evals/cases.json`), `bun run eval`. Default 24/90, legacy 66/90, openai-only 30/90. Default needs `PLANNER_THINK=false` (gemma4 otherwise spends its whole token budget thinking → ~100% fallback).
    - **2.6 Planner prompt fix** (done, `006458d`): canonical parameter names + one example per tool (not from the golden set) + no-code-fences rule in `classifierPromptLocal`. openai-only 27 → 78/90, default 24 → 76/90, legacy 66 → 72/90 (`evals/BASELINE.md`, "Step 2.6").
-3. **Remove hardcoded data** (← current phase). Agreed scope, **one commit each, `bun run eval --config evals/configs/default.env --runs 3` after each** (reference: "Phase 3 reference" in `evals/BASELINE.md`):
-   - (a) remove the `knownUsdPriceForProduct` table (`policy.ts`, removal only — nothing else in `policy.ts`),
-   - (b) remove `buildDeterministicFinanceMessage` (`postprocess.ts`) — answers come from synthesis / the last step,
-   - (c) live FX rates in `exchange.app.ts` (the eval's derived scorer reads the rate from the trace, so `fx-static` cases stay valid).
-4. **Native tool calling + escalation** (after phase 3): replace the JSON planner, `policy.ts` and placeholders with schema-based tool calling. Math is also a candidate for local-first + escalation: its failure is detectable (the expression must pass the whitelist and evaluate).
+3. **Remove hardcoded data** (done 2026-10-28; per-step rows in `evals/BASELINE.md`, "Phase 3"): 3.1 token/prefix KB product filter (`productMatch.ts`), 3.2 `knownUsdPriceForProduct` removed, 3.3 `buildDeterministicFinanceMessage` removed (synthesis answers), 3.4 live FX (Frankfurter, cached, never a hardcoded rate). Default 80 → 81/90 through 3.3, **72/90 after 3.4**: live rates expose the stale-`exchangeIndex` math bug in `sanitizeRoute` (3 cases, synthesis does the arithmetic and gets 4-digit rates wrong) — see Known issues.
+4. **Native tool calling + escalation** (← next phase): replace the JSON planner, `policy.ts` and placeholders with schema-based tool calling. Math is also a candidate for local-first + escalation: its failure is detectable (the expression must pass the whitelist and evaluate).
 
 **Next steps, in order:**
 
-1. Phase 3 (a) → (b) → (c), each its own commit + default eval, recorded in `evals/BASELINE.md`.
-2. Phase 4.
+1. Decide on the stale-`exchangeIndex` fix in `policy.ts` (one line, −8 → ~0 expected) vs leaving it for phase 4.
+2. Phase 4. Compare against the phase 3 end state in `evals/BASELINE.md` (default 72/90 at `b000191`).
 
 ## Working rules
 
@@ -52,7 +49,7 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 - `exchange.app.ts` `extractAmount` takes the first `N USD|EUR|GBP|ILS` in the user input as the amount to convert, so for "I have 500 ILS…" the tool output says "500 USD = … ILS" (a misleading line synthesis has to ignore). The rate itself is right. Phase 4 (amount becomes a tool parameter).
 - `sanitizeRoute` keyword checks are substring-based: `looksLikeExchangeQuestion` matches `ils` inside words like "emails" and injects a `getExchangeRate` step (eval `st-review`). Phase 4 (policy.ts is deleted).
 - `extractUsdAmount` (`router.service.ts`) falls back to `price[^0-9]*(\d+)` when the RAG output has no "USD": for "The price for **NeoBook Air 14** is **not available in the KB**." it returns `14` (from the product name), which placeholders then put into the math. The trigger in `mt-total-brewmaster-neobook` (a product-filter miss) is fixed in 3.1, but any RAG answer without "USD" still hits it. Phase 4 (placeholders replaced).
-- `sanitizeRoute` budget branch: `exchangeIndex` is read before `calculateMath` steps are filtered out, so when `looksLikeExchangeQuestion` appended `getExchangeRate` after the planner's math, the rebuilt math references itself (`((249) * ) - 500`) and fails; synthesis then does the arithmetic and sometimes gets it wrong (`mt-missing-aurora`). Phase 4.
+- `sanitizeRoute` budget branch: `exchangeIndex` is read before `calculateMath` steps are filtered out, so when `looksLikeExchangeQuestion` appended `getExchangeRate` after the planner's math, the rebuilt math references itself (`((249) * ) - 500`) and fails; synthesis then does the arithmetic. With live 4-digit rates it gets it wrong every time: `mt-budget-skyline`, `mt-missing-evophone`, `mt-missing-aurora` derived 0/3 each (−8 at 3.4). Phase 4, or a one-line fix (read the index after the filter).
 - `sanitizeRoute` rewrites correct "total in ILS" plans (2× product + math) into 5 steps with an extra `calculateMath` (eval `mt-total-*`, tools scorer) — phase 4.
 - gemma4:12b emits broken JSON for math plans (unterminated object: a `}` missing after `expression`, both `st-math-*` cases, 3/3 runs) → detectable, the fallback planner handles it (default fallback 7%). Phase 4 (schema-based tool calling).
 - phi3 code fences: `PLANNER_STOP` contains ` ``` `, and phi3 still starts its planner output with ` ```json ` on 5 of 30 cases despite the prompt's no-fences rule (8 before 2.6), so generation stops at the first token → empty plan → fallback (legacy fallback 16%). Same stop list as before phase 1, kept so legacy measures the old behavior; phase 4 (tool calling) removes the stop-sequence planner.
@@ -60,7 +57,7 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 
 ---
 
-## Current state (phase 2 done; phase 3 next — update as phases land)
+## Current state (phase 3 done; phase 4 next — update as phases land)
 
 ### Commands
 
@@ -145,7 +142,7 @@ Source docs are `data/products/*.txt`; `scripts/index-kb.ts` chunks them (220 wo
 
 #### Evals (`evals/`, runner in `packages/server/scripts/eval.ts` + `scripts/eval/`)
 
-- `evals/cases.json` – golden set, validated by the zod schema in `scripts/eval/cases.ts`. `expect.tools` excludes `generalChat` (`[]` = no tools), `allow_extra` lists tolerated extra tools; `args` are case-insensitive substring facts per tool step; `answer_contains` (inner array = any-of) / `answer_not_contains` are normalized and number/word-boundary aware; `derived` computes the expected ILS number from the trace's `getExchangeRate` value and KB prices (so it survives phase 3); `judge.rubric` → component `judge` (`EVAL_JUDGE_PROMPT`). Tags: `readme`, `hardcode-sensitive`, `fx-static`, `new-product`, `filter-mismatch`.
+- `evals/cases.json` – golden set, validated by the zod schema in `scripts/eval/cases.ts`. `expect.tools` excludes `generalChat` (`[]` = no tools), `allow_extra` lists tolerated extra tools; `args` are case-insensitive substring facts per tool step; `answer_contains` (inner array = any-of) / `answer_not_contains` are normalized and number/word-boundary aware; `derived` computes the expected ILS number from the trace's `getExchangeRate` value (live since 3.4) and KB prices; tolerance 0.01 absolute; `judge.rubric` → component `judge` (`EVAL_JUDGE_PROMPT`). Tags: `readme`, `hardcode-sensitive`, `fx-static`, `new-product`, `filter-mismatch`.
 - `evals/configs/{default,legacy,openai-only}.env` – must set every component; the runner clears component vars inherited from `packages/server/.env` and dynamically imports the server after applying the config. Judge is gpt-5.4-mini in all configs.
 - Each case-run gets a fresh conversation id and in-memory history (never touches `history.json`). Raw results with full traces → `evals/results/` (gitignored); console prints per-case, category, tag and scorer pass rates plus latency p50/p95, tokens, router/judge cost and fallback rate.
 

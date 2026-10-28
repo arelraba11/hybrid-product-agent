@@ -63,6 +63,7 @@ Default config, `--runs 3`, one row per step. Δ is against the 80/90 reference 
 | 3.1 token/prefix KB product filter   | `bbe2251` | **76/90 (84%)** | −4  | 81 / 19/21 / 24/27      | 7%       | 17%         | 20%            |
 | 3.2 remove `knownUsdPriceForProduct` | `d91c5b0` | **78/90 (87%)** | −2  | 81 / 21/21 / 24/27      | 7%       | 16%         | — (removed)    |
 | 3.3 remove templated finance answers | `c11bf8d` | **81/90 (90%)** | +1  | 81 / 21/21 / 27/27      | 7%       | — (removed) | —              |
+| 3.4 live FX rates (Frankfurter)      | `b000191` | **72/90 (80%)** | −8  | 81 / 12/21 / 27/27      | 7%       | —           | —              |
 
 **3.1:** the filter now resolves `BrewMaster Y` → `brewmaster y coffee machine` and `NeoBook Air 14` → `neobook air 14 laptop`. `EvoPhone Z` / `PixelPad Pro` match nothing and use the global search, as before. Retrieval for "What is the price in USD?" + NeoBook used to return ElectroRide/PrintForge/Skyline chunks and now returns only NeoBook chunks. `mt-total-brewmaster-neobook`: NeoBook's `numericValue` is **1099** (`output`, was 14), the answer is 5,430 ILS, and **derived goes 0 → 3/3**. The case still fails on tools (the `sanitizeRoute` 5-step rewrite, phase 4).
 
@@ -82,6 +83,12 @@ The −4 is outside the noise band, but neither losing case passes through code 
 - `mt-total-tidal-aurora`: "**2,542.5 ILS**" with the per-product breakdown.
 
 Cost: router $0.090 → $0.099 and tokens in 155k → 161k, because synthesis now runs on the ~15% of requests that used to be templated.
+
+**3.4:** rates are live ECB rates on 2026-10-28: USD 3.1259, EUR 3.4801 (were 3.75 / 4.05). **−8 is a real regression, and its cause is pre-existing.** All 9 lost runs are derived failures on the three cases whose math step references itself because of the stale `exchangeIndex` in `sanitizeRoute` (logged under 3.1): `mt-budget-skyline` `3000 - ((689) * )`, `mt-missing-evophone` `((799) * ) - 2500`, `mt-missing-aurora` `((249) * ) - 500`. The math tool fails, so synthesis multiplies by itself. At 3.75 it got that right; at 3.1259 it doesn't. For example, 689 × 3.1259 comes out as 2153.6 / 2153.8 / 2153.28 (it's 2153.75), and 249 × 3.1259 as 778.6 / 778.85 (it's 778.35). Every case where the math tool actually runs still passes at the live rate: `st-fx-convert-eur` 696.02, `mt-budget-printforge` 21.85, the `mt-total-*` derived values 4,526.30 / 2,119.36. Judge is unchanged at 27/27. **So the static 3.75 was hiding the `sanitizeRoute` bug: the case passed only because synthesis could do the arithmetic in its head.** The fix is either the one-line index fix in `policy.ts` or phase 4, where the math step gets real references.
+
+FX behavior (unit-tested with a mocked fetch and clock in `services/apps/exchange.app.test.ts`): 1 h fresh cache. A failed refresh serves a cached rate up to 24 h old, labeled; after that, or with no cache, the tool returns an error string with no number. 404 → "I don't have a rate for X". The live API took ~50–130 ms per currency, and repeats are cache hits.
+
+**Phase 3 summary:** the price table, templated answers and static rates are gone, and the KB filter matches real product names. Default goes 80 → 72/90, and the whole −8 is the `sanitizeRoute` math bug above (81/90 before live rates). Remaining failures, all `policy.ts` (phase 4): `st-review` ("ils" in "emails"), `mt-total-*` (5-step rewrite, tools only, numbers right), `mt-budget-skyline` / `mt-missing-*` (stale `exchangeIndex`).
 
 ## Step 2.6: planner prompt fix (`006458d`)
 
