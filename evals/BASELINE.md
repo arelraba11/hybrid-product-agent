@@ -13,10 +13,45 @@ Reproduce with `bun run eval --config evals/configs/<config>.env --runs 3` (Olla
 | **after 2.6:** openai-only          | 2026-10-28 | `006458d` | 30 × 3       | **78/90 (87%)** |
 | **after 2.6:** default              | 2026-10-28 | `006458d` | 30 × 3       | **76/90 (84%)** |
 | **after 2.6:** legacy               | 2026-10-28 | `006458d` | 30 × 3       | **72/90 (80%)** |
+| **phase 3 reference:** default      | 2026-10-28 | `6c3f98a` | 30 × 3       | **80/90 (89%)** |
 
 All three runs use the same planner prompt (`classifierPromptLocal` before step 2.6). The default and legacy runs include the `LLM_TIMEOUT_MS` / `<C>_MAX_TOKENS` / `<C>_THINK` robustness fixes (`a30995f`, `f378257`), which change no planner or tool logic. With `PLANNER_THINK=false` gemma4 never hits the limit or the timeout (planner max 124 output tokens, mean 0.9s).
 
 > **Commit SHAs.** The openai-only run's results file says `b40d589`. That commit was rewritten to `3c7a1dc` by the 2026-10-27 rebase, which only amended commit messages; the trees are identical.
+
+## Phase 3 reference: default at `6c3f98a` (2026-10-28)
+
+**Compare every phase 3 step against this run** (`bun run eval --config evals/configs/default.env --runs 3`). It is the end of phase 2: step 2.6 plus the eval-hygiene commit `6c3f98a`:
+
+- **Fallback prompt (`classifierPrompt`):** its few-shot examples no longer reuse golden-set inputs. They now use Berlin + GBP, a blender review, a product that isn't in the KB, and 750 ILS / 40 EUR. Prompt-only.
+- **`amb-drone-price`:** scored by a judge rubric now (asks which drone, OR gives 689 USD, the only drone in the KB) instead of any-of phrases, which rejected reasonable clarifying answers.
+
+| Category        | Pass      | Rate    |     | Scorer       | Pass  | Rate |
+| --------------- | --------- | ------- | --- | ------------ | ----- | ---- |
+| single-tool     | 12/15     | 80%     |     | tools        | 81/90 | 90%  |
+| rag             | 24/24     | 100%    |     | args         | 54/54 | 100% |
+| multi-tool      | 18/24     | 75%     |     | contains     | 45/45 | 100% |
+| unknown-product | 8/9       | 89%     |     | not_contains | 9/9   | 100% |
+| chit-chat       | 9/9       | 100%    |     | derived      | 18/21 | 86%  |
+| ambiguous       | 9/9       | 100%    |     | judge        | 26/27 | 96%  |
+| **overall**     | **80/90** | **89%** |     |              |       |      |
+
+| Metric                                                      | Value                                              |
+| ----------------------------------------------------------- | -------------------------------------------------- |
+| Tags: readme / new-product / hardcode-sensitive / fx-static | 100% / 83% / 75% / 74%                             |
+| Latency p50 / p95                                           | 2.1s / 5.1s                                        |
+| Tokens in / out (router)                                    | 153,838 / 8,991                                    |
+| Cost router / judge                                         | $0.090 / $0.009                                    |
+| Fallback / both planners failed                             | 7% / 0% (`st-math-*` 3/3 each, gemma4 broken JSON) |
+| Deterministic (templated) answers                           | 14%                                                |
+| `knownUsdPriceForProduct` as numericValue                   | 23%                                                |
+| Crashes                                                     | 0                                                  |
+
+**Failing (10 runs):** `st-review` 0/3 (tools; "ils" in "emails"), `mt-total-brewmaster-neobook` 0/3 (tools + derived; `sanitizeRoute` rewrite + `extractUsdAmount` "14"), `mt-total-tidal-aurora` 0/3 (tools; rewrite), `up-pixelpad-budget` 2/3 (the 1 failure is the templated "You will have 1000 ILS remaining.").
+
+**76 → 80 compared with `006458d`:** `amb-drone-price` 0 → 3 is the rubric change. `up-pixelpad-budget` 0 → 2 and `mt-missing-evophone`/`-aurora` 2 → 3 are run-to-run variance: the plans are identical and there was no fallback. `up-pixelpad-budget` lands on the templated answer only when the RAG wording makes `buildDeterministicFinanceMessage` fire. The fallback-prompt change only affects fallback runs, which are both `st-math-*` cases, and those still pass 3/3. So take ±2 runs as noise when reading phase 3 deltas.
+
+**What phase 3 should move:** (a) removing `knownUsdPriceForProduct` shows which price passes depended on it, starting from the 23% hardcode rate. (b) removing `buildDeterministicFinanceMessage` should fix `up-pixelpad-budget`'s templated failure, change the 14% deterministic answers, and turn `mt-total-brewmaster-neobook`'s wrong 1361.25 into a synthesis answer. (c) live FX changes the `fx-static` numbers but not their scoring (derived reads the rate from the trace).
 
 ## Step 2.6: planner prompt fix (`006458d`)
 
