@@ -88,4 +88,3 @@ Response:
 ## Author
 
 Arel Raba
-Computer Science B.Sc – Data Engineering Track
