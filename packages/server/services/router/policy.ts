@@ -286,11 +286,10 @@ export function sanitizeRoute(
    if (looksLikeBudgetGapQuestion(userInput)) {
       const products = detectKnownProducts(userInput);
       const budget = extractFirstNumber(userInput);
-      let exchangeIndex = plan.findIndex((s) => s.tool === 'getExchangeRate');
-
       // Planner math for budget questions is often directionally wrong.
       // Rebuild one canonical math step from normalized data.
       plan = plan.filter((s) => s.tool !== 'calculateMath');
+      let exchangeIndex = plan.findIndex((s) => s.tool === 'getExchangeRate');
 
       for (const product of products) {
          const already = plan.some(
