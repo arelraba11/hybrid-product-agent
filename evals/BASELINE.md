@@ -9,12 +9,71 @@ Reproduce with `bun run eval --config evals/configs/<config>.env --runs 3` (Olla
 | openai-only                         | 2026-10-27 | `3c7a1dc` | 30 × 3       | **30/90 (33%)** |
 | default (gemma4:12b planner + chat) | 2026-10-28 | `f378257` | 30 × 3       | **24/90 (27%)** |
 | legacy (phi3 + gpt-4o-mini)         | 2026-10-28 | `f378257` | 30 × 3       | **66/90 (73%)** |
+| openai-only, re-run before 2.6      | 2026-10-28 | `b8794c3` | 30 × 3       | **27/90 (30%)** |
+| **after 2.6:** openai-only          | 2026-10-28 | `006458d` | 30 × 3       | **78/90 (87%)** |
+| **after 2.6:** default              | 2026-10-28 | `006458d` | 30 × 3       | **76/90 (84%)** |
+| **after 2.6:** legacy               | 2026-10-28 | `006458d` | 30 × 3       | **72/90 (80%)** |
 
 All three runs use the same planner prompt (`classifierPromptLocal` before step 2.6). The default and legacy runs include the `LLM_TIMEOUT_MS` / `<C>_MAX_TOKENS` / `<C>_THINK` robustness fixes (`a30995f`, `f378257`), which change no planner or tool logic. With `PLANNER_THINK=false` gemma4 never hits the limit or the timeout (planner max 124 output tokens, mean 0.9s).
 
 > **Commit SHAs.** The openai-only run's results file says `b40d589`. That commit was rewritten to `3c7a1dc` by the 2026-10-27 rebase, which only amended commit messages; the trees are identical.
 
-## Across configs
+## Step 2.6: planner prompt fix (`006458d`)
+
+This is a prompt-only change to `classifierPromptLocal`. It lists each tool with its exact canonical parameter names (`city`, `currencyCode`, `expression`, `reviewText`, `product_name` + `query`, `userInput`), gives one example per tool plus one chaining example, and adds an explicit "raw JSON only, no code fences" rule. None of the examples come from `evals/cases.json`: they use Tokyo, GBP, 12 \* 9 + 4, 900 ILS / 60 GBP and a "Nimbus Kettle K2" that isn't in the KB. The only token they share with the golden set is the digit `2`. Code, `policy.ts`, stop sequences and the fallback prompt are unchanged.
+
+"Before" is the phase 2 baseline at `f378257` for default and legacy. For openai-only it's a re-run at `b8794c3` (27/90), because the 2026-10-27 run (30/90) predates the eval env fix. The 3-pass gap between those two is gpt-5.4-mini's run-to-run variance; both runs are all-primary.
+
+### Before → after
+
+| Category        | openai-only       | default           | legacy            |
+| --------------- | ----------------- | ----------------- | ----------------- |
+| single-tool     | 6/15 → 12/15      | 4/15 → 12/15      | 9/15 → 12/15      |
+| rag             | 0/24 → **24/24**  | 0/24 → **24/24**  | 21/24 → 24/24     |
+| multi-tool      | 6/24 → 18/24      | 3/24 → 16/24      | 18/24 → 15/24     |
+| unknown-product | 3/9 → 9/9         | 5/9 → 6/9         | 3/9 → 6/9         |
+| chit-chat       | 9/9 → 9/9         | 9/9 → 9/9         | 9/9 → 9/9         |
+| ambiguous       | 3/9 → 6/9         | 3/9 → 9/9         | 6/9 → 6/9         |
+| **overall**     | **27 → 78 (87%)** | **24 → 76 (84%)** | **66 → 72 (80%)** |
+
+| Metric                                    | openai-only           | default               | legacy                |
+| ----------------------------------------- | --------------------- | --------------------- | --------------------- |
+| Scorer args                               | 17% → 100%            | 13% → 100%            | 94% → 100%            |
+| Scorer contains / derived / judge         | 25/43/75 → 94/86/100% | 15/43/83 → 100/76/88% | 81/86/88 → 100/71/83% |
+| Scorer tools                              | 90% → 90%             | 87% → 90%             | 87% → 87%             |
+| readme / new-product / hardcode-sensitive | 40/0/50 → 100/67/75%  | 20/0/50 → 100/78/67%  | 100/67/75 → 80/83/75% |
+| Fallback rate                             | 0% → 0%               | 0% → 7%               | 27% → 16%             |
+| Deterministic (templated) answers         | 13% → 17%             | 13% → 17%             | 27% → 20%             |
+| `knownUsdPriceForProduct` as numericValue | 3% → 23%              | 0% → 23%              | 20% → 20%             |
+| Latency p50 / p95                         | 1.5/3.8s → 2.2/4.2s   | 1.1/3.7s → 2.0/4.5s   | 2.0/4.7s → 2.6/6.6s   |
+| Tokens in (router)                        | 38.6k → 141.9k        | 37.9k → 152.9k        | 113.2k → 175.1k       |
+| Cost router (90 runs)                     | $0.062 → $0.144       | $0.028 → $0.089       | $0.017 → $0.020       |
+
+Smoke (`./scripts/smoke.sh`, default `.env`, `006458d`): **all 5 README scenarios + chat work**, with all 6 planned by gemma4 (0 fallbacks, ~1s per plan once the model is loaded). Before 2.6 only 1 of 5 worked.
+
+**Reading the deltas**
+
+- The primary planners now use the right parameter names: args 100% in all three configs. RAG goes 0 → 24/24 for both models that used to send `userInput`, and the `filter-mismatch` case passes everywhere.
+- Latency, tokens and cost go up because tools actually run now, RAG especially. A request that used to stop at `"Missing product_name parameter"` now does retrieval plus generation. It isn't a regression. Default costs about $0.001 per request.
+- The `knownUsdPriceForProduct` rate jumps to 23% for the same reason: product steps now carry real product names, so the hardcoded table matches them. Its effect on passes is limited. On RAG-only cases (RAM, battery) the `numericValue` it attaches goes unused, because the answer is the RAG text. On `mt-total-brewmaster-neobook` the hardcoded 349 matches the KB.
+- **default fallback 7%** is detectable and works as designed: gemma4 writes unterminated JSON for both `st-math-*` cases (a `}` is missing after the expression), and the fallback produces the right plan (3/3 each).
+- **legacy fallback 16%:** the no-fences rule cut phi3's ` ```json ` rate from 8 to 5 cases, but it's still the 1-token stop (14/14 fallback runs). Legacy's multi-tool score drops 18 → 15 and readme 15 → 12. That's because `mt-review-rag` is now planned by phi3 itself (it used to fall back to gpt-4o-mini) and gets the tools wrong.
+
+### What still fails after 2.6, and where it lives
+
+| Case                         | Configs       | Cause                                                                                                                                                                                                                                                                                                                              | Lives in                                          |
+| ---------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| st-review                    | all           | `looksLikeExchangeQuestion` matches "ils" in "em**ails**" and adds `getExchangeRate`.                                                                                                                                                                                                                                              | `policy.ts` (`sanitizeRoute`)                     |
+| mt-total-brewmaster-neobook  | all           | The planner's plan is right (2× product, math). `sanitizeRoute` rewrites it into 5 steps with an extra `calculateMath` (tools ✗). NeoBook's `numericValue` is **14**, taken from the name "NeoBook Air 14" instead of 1,099 USD, so the templated answer is a confident **"The total is 1361.25 ILS."** The right answer is 5,430. | `policy.ts`, numeric extraction, `postprocess.ts` |
+| mt-total-tidal-aurora        | all           | Same 5-step rewrite (tools ✗). The number itself is right in default/openai-only (2,542.50).                                                                                                                                                                                                                                       | `policy.ts`                                       |
+| up-pixelpad-budget           | default       | The product isn't in the KB, so `numericValue` is null and the templated answer says **"You will have 1000 ILS remaining."** (judge ✗ 3/3).                                                                                                                                                                                        | `postprocess.ts`                                  |
+| mt-missing-evophone / aurora | default (1/3) | derived off in 1 of 3 runs.                                                                                                                                                                                                                                                                                                        | n/a (variance)                                    |
+| amb-drone-price              | openai-only   | The answer ("share the model…") is reasonable, but the any-of phrases want "which model"/"specify". Scorer brittleness, not a system bug.                                                                                                                                                                                          | `evals/cases.json`                                |
+| legacy-only                  | legacy        | `mt-review-rag` tools ✗ (phi3 plan), `up-evophone-z-price` makes up a price, `amb-battery-no-product` judge ✗, and the 16% fence fallback.                                                                                                                                                                                         | phi3 as planner / chat                            |
+
+Note: the **fallback prompt's** few-shot examples (`classifierPrompt`) are golden-set inputs (Paris + USD, the EvoPhone review, EvoPhone X RAM, 100 ILS / 25 USD). Any case that falls back is partly measuring memorization. It doesn't matter for default or openai-only here (≤7% fallback), but it inflates legacy before 2.6. Unchanged by 2.6, as specified.
+
+## Phase 2 baselines across configs (before 2.6)
 
 **Headline: the primary planner's parameter names decide the score.** Tool selection is about the same in every config (tools scorer 87–92%). What differs is whether the parameters survive `normalizeStep`:
 

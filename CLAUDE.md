@@ -23,16 +23,15 @@ Hybrid design: **Ollama (local) + OpenAI API**. Each LLM component gets its prov
 
 Change one thing per phase so eval deltas are attributable. Do not do work from a later phase unless explicitly asked.
 
-1. **Infra + model upgrade** (done; verified 2026-10-28): python-service removed (embeddings via Ollama `embeddinggemma`, vectors in SQLite with brute-force cosine in TS — no sqlite-vec), Prisma MySQL → SQLite, per-component provider config, models → `gemma4:12b` / `gpt-5.4-mini`, Responses API structured output. Planner + chat run on `gemma4:12b` (needs `PLANNER_THINK`/`CHAT_THINK=false`) and on `phi3` (legacy). On the default config only 1 of the 5 README smoke scenarios works, because of the planner-prompt parameter problem (step 2.6), not the infra.
+1. **Infra + model upgrade** (done; verified 2026-10-28): python-service removed (embeddings via Ollama `embeddinggemma`, vectors in SQLite with brute-force cosine in TS — no sqlite-vec), Prisma MySQL → SQLite, per-component provider config, models → `gemma4:12b` / `gpt-5.4-mini`, Responses API structured output. Planner + chat run on `gemma4:12b` (needs `PLANNER_THINK`/`CHAT_THINK=false`) and on `phi3` (legacy). All 5 README smoke scenarios work on the default config since step 2.6.
 2. **Eval harness** (done; openai-only, default and legacy baselines in `evals/BASELINE.md`): richer KB + 3 new products, router trace, golden set (`evals/cases.json`), `bun run eval`. Default 24/90, legacy 66/90, openai-only 30/90. Default needs `PLANNER_THINK=false` (gemma4 otherwise spends its whole token budget thinking → ~100% fallback).
-   - **2.6 Planner prompt fix:** add parameter names to `classifierPromptLocal` (prompt-only change). Run all three configs before and after.
+   - **2.6 Planner prompt fix** (done, `006458d`): canonical parameter names + one example per tool (not from the golden set) + no-code-fences rule in `classifierPromptLocal`. openai-only 27 → 78/90, default 24 → 76/90, legacy 66 → 72/90 (`evals/BASELINE.md`, "Step 2.6").
 3. **Remove hardcoded data:** prices in `policy.ts`, FX rates in `exchange.app.ts`, `buildDeterministicFinanceMessage`. Order of phases 3/4 to be decided after 2.6 results — phase 4 deletes `policy.ts` (and its hardcoded prices) anyway.
 4. **Native tool calling + escalation:** replace the JSON planner, `policy.ts` and placeholders with schema-based tool calling. Math is also a candidate for local-first + escalation: its failure is detectable (the expression must pass the whitelist and evaluate).
 
 **Next steps, in order:**
 
-1. Step 2.6 (planner prompt fix). Before-numbers are in `evals/BASELINE.md`. On the default config only 1 of the 5 README smoke scenarios currently works (the `userInput` parameter problem); 2.6 is expected to fix that.
-2. Decide the order of phases 3/4.
+1. Decide the order of phases 3/4. After 2.6 the remaining shared failures sit in `policy.ts` (`sanitizeRoute` rewrites), `buildDeterministicFinanceMessage` and numeric extraction (see `evals/BASELINE.md`, "What still fails after 2.6").
 
 ## Working rules
 
@@ -48,10 +47,13 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 - `router/policy.ts` (~460 lines of keyword heuristics + hardcoded prices) — deleted in phase 4. Don't extend it.
 - `apps/exchange.app.ts` hardcoded rates; `buildDeterministicFinanceMessage` templated answers — phase 3.
 - KB product filter is an exact match on the lowercased filename stem (`kbRepository.findByProduct`), so "BrewMaster Y" ≠ `brewmaster y coffee machine` and silently falls back to a global search.
-- Primary planner prompt (`classifierPromptLocal`, used for `planner` whatever its provider/model) lists tool names but no parameter names; its only example is `{"userInput": ...}`. gpt-5.4-mini and gemma4:12b as primary copy `userInput` into most tools → `normalizeStep` nulls the params, and since the plan parses, the fallback (full prompt) never fires. Phase 4 candidate (schema-based tool calling).
 - `sanitizeRoute` keyword checks are substring-based: `looksLikeExchangeQuestion` matches `ils` inside words like "emails" and injects a `getExchangeRate` step (eval `st-review`). Phase 4 (policy.ts is deleted).
-- With null product names, `buildDeterministicFinanceMessage` can return a confidently wrong templated answer ("The total is 0 ILS.", eval `mt-total-tidal-aurora`) — phase 3.
-- `PLANNER_STOP` contains ` ``` `, and phi3 starts its planner output with ` ```json `, so generation stops at the first token → empty plan → fallback. In the legacy baseline that's 8 of 30 cases (27% of requests, deterministic at temperature 0). Same stop list as before phase 1, kept so legacy measures the old behavior; phase 4 (tool calling) removes the stop-sequence planner.
+- `buildDeterministicFinanceMessage` returns confidently wrong templated answers when a price is missing or wrong: "You will have 1000 ILS remaining." for a product not in the KB (`up-pixelpad-budget`), "The total is 1361.25 ILS." instead of 5,430 (`mt-total-brewmaster-neobook`) — phase 3.
+- A step's `numericValue` can come from the wrong number: for NeoBook Air 14 the RAG output yields `14` (from the name) instead of `1,099 USD`. Placeholders substitute it into math — phase 4 (placeholders replaced).
+- `sanitizeRoute` rewrites correct "total in ILS" plans (2× product + math) into 5 steps with an extra `calculateMath` (eval `mt-total-*`, tools scorer) — phase 4.
+- gemma4:12b sometimes emits unterminated JSON for math plans (missing `}` after `expression`, both `st-math-*` cases) → detectable, the fallback planner handles it (default fallback 7%).
+- The fallback prompt's (`classifierPrompt`) few-shot examples are golden-set inputs (Paris + USD, the EvoPhone review, EvoPhone X RAM, 100 ILS / 25 USD), so cases that fall back partly measure memorization. Matters mostly for legacy.
+- `PLANNER_STOP` contains ` ``` `, and phi3 starts its planner output with ` ```json `, so generation stops at the first token → empty plan → fallback. Legacy: 8 of 30 cases (27%) before 2.6, 5 of 30 (16%) after its explicit no-fences rule. Same stop list as before phase 1, kept so legacy measures the old behavior; phase 4 (tool calling) removes the stop-sequence planner.
 - Planner still has no zod schema: the OpenAI fallback uses `json_object` (enforced), the local planner relies on the prompt + stop sequences — phase 4.
 
 ---
