@@ -121,7 +121,9 @@ export async function exchangeToIls(
    const { rate, date, stale } = live;
    const source = `rate ${rate}, ECB reference rate of ${date}${stale ? ', cached: live update unavailable' : ''}`;
 
-   if (amount !== null && Number.isFinite(amount)) {
+   // Converted amounts are rounded to 2 decimals; an amount of 1 is the rate itself, so it
+   // is reported unrounded (a model asking for "1 USD" would otherwise compute with 3.13).
+   if (amount !== null && amount !== 1 && Number.isFinite(amount)) {
       const converted = amount * rate;
       const pretty = Number.isInteger(converted)
          ? converted.toFixed(0)

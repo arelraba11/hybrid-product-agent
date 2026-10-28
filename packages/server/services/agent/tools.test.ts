@@ -94,6 +94,28 @@ describe('tool execution', () => {
       });
    });
 
+   test('getExchangeRate with amount 1 reports the unrounded rate', async () => {
+      globalThis.fetch = mock(
+         async () =>
+            new Response(
+               JSON.stringify({ date: '2026-10-28', rates: { ILS: 3.1259 } }),
+               { status: 200 }
+            )
+      ) as unknown as typeof fetch;
+
+      // SEK: a code no other test uses.
+      expect(
+         (
+            await tool('getExchangeRate').execute({
+               currencyCode: 'SEK',
+               amount: 1,
+            })
+         ).output
+      ).toBe(
+         '1 SEK = 3.1259 ILS (rate 3.1259, ECB reference rate of 2026-10-28)'
+      );
+   });
+
    test('getExchangeRate: unknown currency is ok: false with no number', async () => {
       globalThis.fetch = mock(
          async () => new Response('{}', { status: 404 })

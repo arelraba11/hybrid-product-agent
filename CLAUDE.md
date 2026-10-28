@@ -53,6 +53,7 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 - gemma4:12b emits broken JSON for math plans (unterminated object: a `}` missing after `expression`, both `st-math-*` cases, 3/3 runs) → detectable, the fallback planner handles it (default fallback 7%). Phase 4 (schema-based tool calling).
 - phi3 code fences: `PLANNER_STOP` contains ` ``` `, and phi3 still starts its planner output with ` ```json ` on 5 of 30 cases despite the prompt's no-fences rule (8 before 2.6), so generation stops at the first token → empty plan → fallback (legacy fallback 16%). Same stop list as before phase 1, kept so legacy measures the old behavior; phase 4 (tool calling) removes the stop-sequence planner.
 - Planner still has no zod schema: the OpenAI fallback uses `json_object` (enforced), the local planner relies on the prompt + stop sequences — phase 4.
+- The agent loop (`AGENT=tools`) sees only the current input, not the conversation history (same as the legacy planner), so follow-ups like "and the drone?" don't resolve. History goes only to CHAT. Intentional for phase 4.
 
 ---
 
@@ -72,7 +73,7 @@ bun run index-kb   # (re)index data/products/*.txt into kb_chunks (scripts/index
 bun run format     # prettier --write .
 bun test           # unit tests (bun:test): kb/productMatch, apps/exchange (mocked fetch + clock)
 ./scripts/smoke.sh # 5 README scenarios + 1 chat prompt against a running `bun run dev` (needs jq)
-bun run eval --config evals/configs/openai-only.env --runs 3   # golden set; also --filter <id|category|tag>, --verbose
+bun run eval --config evals/configs/openai-only.env --runs 3   # golden set; also --agent legacy|tools, --filter <id|category|tag>, --verbose
 
 cd packages/server && bun run typecheck            # tsc --noEmit
 cd packages/server && bunx prisma migrate dev      # SQLite at prisma/chatbot.db; also runs prisma generate
@@ -87,7 +88,7 @@ Unit tests are few (`bun test`, pure functions only). The eval harness (`bun run
 
 ### Environment
 
-`packages/server/.env` (Bun auto-loads it; see `.env.example`): `OPENAI_API_KEY`, `DATABASE_URL` (`file:./chatbot.db`, relative to `prisma/`), `OLLAMA_URL` (default `http://127.0.0.1:11434`), `EMBEDDING_MODEL` (default `embeddinggemma`), `PRODUCT_DATA_DIR` (default `<repo>/data/products`), `PORT` (default 3000), `LLM_TIMEOUT_MS` (default 60000; per-call timeout for every LLM and embedding request, both providers — not a component var, so evals inherit it from `.env`), `FX_TIMEOUT_MS` (default 5000; Frankfurter request timeout, parsed in `exchange.app.ts`).
+`packages/server/.env` (Bun auto-loads it; see `.env.example`): `OPENAI_API_KEY`, `DATABASE_URL` (`file:./chatbot.db`, relative to `prisma/`), `OLLAMA_URL` (default `http://127.0.0.1:11434`), `EMBEDDING_MODEL` (default `embeddinggemma`), `PRODUCT_DATA_DIR` (default `<repo>/data/products`), `PORT` (default 3000), `LLM_TIMEOUT_MS` (default 60000; per-call timeout for every LLM and embedding request, both providers — not a component var, so evals inherit it from `.env`), `FX_TIMEOUT_MS` (default 5000; Frankfurter request timeout, parsed in `exchange.app.ts`), `AGENT` (`legacy` default | `tools`; phase 4 switch, `services/agent/config.ts`; the eval runner sets it from `--agent`, never from `.env`), `AGENT_MAX_ITERATIONS` (default 6; model turns per agent attempt).
 
 Per component (`PLANNER`, `PLANNER_FALLBACK`, `CHAT`, `RAG`, `REVIEWS`, `SYNTHESIS`, `MATH`, `JUDGE` — eval-only): `<C>_PROVIDER` (`ollama`|`openai`), `<C>_MODEL`, optional `<C>_MAX_TOKENS` (unset → no limit on Ollama, 1024 on OpenAI; `.env.example` and the default/legacy eval configs set `PLANNER_MAX_TOKENS=512`, `CHAT_MAX_TOKENS=1024` — leaving an Ollama component unlimited lets it run away), `<C>_THINK` (`true`|`false`, Ollama only; sent as `think` only when set — unset leaves the model default; models without the thinking capability such as phi3 reject `think: true`. gemma4 thinks by default: its thinking goes to Ollama's separate `thinking` field and eats `MAX_TOKENS`, which left the planner's `response` empty. `.env.example` and `default.env` set `PLANNER_THINK=false`, `CHAT_THINK=false`; legacy leaves it unset) and `<C>_REASONING_EFFORT` (OpenAI only; anything but `none` drops `temperature`, which gpt-5.x rejects then; gpt-4o-mini rejects `reasoning` entirely, so leave it unset for non-reasoning models). Defaults are in `llm/config.ts`; invalid values fail at startup. `OLLAMA_MODEL` and `PY_KB_URL` are no longer read.
 

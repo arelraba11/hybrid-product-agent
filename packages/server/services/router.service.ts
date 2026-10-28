@@ -21,6 +21,8 @@ import {
 } from '../repositories/history.repository';
 import { sanitizeRoute, detectCurrencyFromInput } from './router/policy';
 import { resolveParameters } from './router/placeholders';
+import { AGENT_MODE } from './agent/config';
+import { handleWithAgent, type PathTrace } from './agent/handle';
 import type {
    AnswerSource,
    ExecutedStep,
@@ -436,6 +438,33 @@ function sumTotals(calls: LlmCall[]): RouterTrace['totals'] {
    };
 }
 
+async function handleWithLegacy(
+   userInput: string,
+   conversationId: string,
+   history: HistoryStore
+): Promise<{ message: string; intent: string; trace: PathTrace }> {
+   const planned = await collectLlmCalls(() => classify(userInput));
+   const route = planned.result.plan;
+
+   console.log('📊 Planned Route:', JSON.stringify(route, null, 2));
+
+   const out = await executePlan(route, userInput, conversationId, history);
+   return {
+      message: out.message,
+      intent: out.intent,
+      trace: {
+         agentMode: 'legacy',
+         plannerSource: planned.result.source,
+         plannerErrors: planned.result.errors,
+         plannerCalls: planned.calls,
+         rawPlan: planned.result.plan,
+         plan: out.plan,
+         steps: out.steps,
+         answerSource: out.answerSource,
+      },
+   };
+}
+
 export type HandleOptions = {
    /** Defaults to the persistent history.json store. */
    history?: HistoryStore;
@@ -456,31 +485,15 @@ export const routerService = {
       }
 
       const start = performance.now();
-      const { result, calls } = await collectLlmCalls(async () => {
-         const planned = await collectLlmCalls(() => classify(userInput));
-         const route = planned.result.plan;
-
-         console.log('📊 Planned Route:', JSON.stringify(route, null, 2));
-
-         const out = await executePlan(
-            route,
-            userInput,
-            conversationId,
-            history
-         );
-         return { planned, out };
-      });
-      const { planned, out } = result;
+      const { result: out, calls } = await collectLlmCalls(() =>
+         AGENT_MODE === 'tools'
+            ? handleWithAgent(userInput, conversationId, history)
+            : handleWithLegacy(userInput, conversationId, history)
+      );
 
       const trace: RouterTrace = {
          input: userInput,
-         plannerSource: planned.result.source,
-         plannerErrors: planned.result.errors,
-         plannerCalls: planned.calls,
-         rawPlan: planned.result.plan,
-         plan: out.plan,
-         steps: out.steps,
-         answerSource: out.answerSource,
+         ...out.trace,
          finalAnswer: out.message,
          latencyMs: performance.now() - start,
          llmCalls: calls,

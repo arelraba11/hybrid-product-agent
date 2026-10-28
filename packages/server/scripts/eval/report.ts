@@ -33,10 +33,61 @@ export type Summary = {
    latencyMs: { p50: number | null; p95: number | null };
    tokens: { input: number; output: number };
    costUsd: { router: number | null; judge: number | null };
-   fallbackRate: number; // plannerSource !== 'primary'
-   plannerFailedRate: number; // both planners failed -> generalChat
+   fallbackRate: number; // plannerSource !== 'primary' (tools: escalation rate)
+   plannerFailedRate: number; // both planners/attempts failed
+   /** AGENT=tools runs only. */
+   agent: AgentSummary | null;
    crashes: number;
 };
+
+type AgentSummary = {
+   runs: number;
+   repairRate: number; // runs with a repair
+   escalationRate: number; // runs that escalated to plannerFallback
+   escalationReasons: Record<string, number>; // by failure kind
+   failedRate: number; // both attempts failed
+   meanIterations: number; // model turns per run, all attempts
+   invalidCallRate: number; // tool calls that failed validation / all tool calls
+   textToolCallRate: number; // runs with a tool call written as text
+   chatAnswerRate: number; // runs answered by chat (no tool ran)
+};
+
+function summarizeAgent(traces: RouterTrace[]): AgentSummary | null {
+   const agents = traces.flatMap((t) => (t.agent ? [t] : []));
+   if (!agents.length) return null;
+   const n = agents.length;
+
+   const iterations = agents.flatMap((t) =>
+      t.agent!.attempts.flatMap((a) => a.iterations)
+   );
+   const calls = iterations.flatMap((it) => it.toolCalls);
+   const escalationReasons: Record<string, number> = {};
+   for (const t of agents) {
+      const kind = t.agent!.escalation?.kind;
+      if (kind) escalationReasons[kind] = (escalationReasons[kind] ?? 0) + 1;
+   }
+
+   return {
+      runs: n,
+      repairRate: agents.filter((t) => t.agent!.repairs.length).length / n,
+      escalationRate: agents.filter((t) => t.agent!.escalation).length / n,
+      escalationReasons,
+      failedRate:
+         agents.filter((t) => t.agent!.outcome === 'failed').length / n,
+      meanIterations: iterations.length / n,
+      invalidCallRate: calls.length
+         ? calls.filter((c) => c.error).length / calls.length
+         : 0,
+      textToolCallRate:
+         agents.filter((t) =>
+            t.agent!.attempts.some((a) =>
+               a.iterations.some((it) => it.textToolCall)
+            )
+         ).length / n,
+      chatAnswerRate:
+         agents.filter((t) => t.answerSource === 'chat').length / n,
+   };
+}
 
 function rate(runs: number, passes: number): Rate {
    return { runs, passes, passRate: runs ? passes / runs : 0 };
@@ -98,8 +149,12 @@ export function summarize(results: CaseResult[]): Summary {
          traces.filter((t) => t.plannerSource !== 'primary').length
       ),
       plannerFailedRate: fraction(
-         traces.filter((t) => t.plannerSource === 'generalChat').length
+         traces.filter(
+            (t) =>
+               t.plannerSource === 'generalChat' || t.plannerSource === 'failed'
+         ).length
       ),
+      agent: summarizeAgent(traces),
       crashes: runs.filter(({ run }) => run.error !== undefined).length,
    };
 }
@@ -145,6 +200,24 @@ function rateRows(map: Record<string, Rate>): string[][] {
    return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, r]) => [k, `${r.passes}/${r.runs}`, pct(r.passRate)]);
+}
+
+function agentRows(a: AgentSummary): string[][] {
+   const reasons = Object.entries(a.escalationReasons)
+      .map(([k, n]) => `${k}×${n}`)
+      .join(' ');
+   return [
+      ['agent: repair rate', pct(a.repairRate)],
+      [
+         'agent: escalation rate',
+         `${pct(a.escalationRate)}${reasons ? ` (${reasons})` : ''}`,
+      ],
+      ['agent: both attempts failed', pct(a.failedRate)],
+      ['agent: mean iterations', a.meanIterations.toFixed(2)],
+      ['agent: invalid tool calls', pct(a.invalidCallRate)],
+      ['agent: tool call as text', pct(a.textToolCallRate)],
+      ['agent: chat answers', pct(a.chatAnswerRate)],
+   ];
 }
 
 export function formatReport(results: CaseResult[], summary: Summary): string {
@@ -199,6 +272,7 @@ export function formatReport(results: CaseResult[], summary: Summary): string {
             ['fallback rate', pct(s.fallbackRate)],
             ['both planners failed', pct(s.plannerFailedRate)],
             ['crashes', String(s.crashes)],
+            ...(s.agent ? agentRows(s.agent) : []),
          ]
       ),
    ].join('\n');

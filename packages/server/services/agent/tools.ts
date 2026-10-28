@@ -80,7 +80,7 @@ export const TOOLS: AgentTool<AgentToolName>[] = [
             // Strict OpenAI tools require every field; a local model may still omit it.
             .default(null)
             .describe(
-               'Amount in that currency to convert to ILS, or null for the rate only.'
+               'Amount in that currency to convert to ILS, as given by the user. null for the rate only.'
             ),
       }),
       async execute({ currencyCode, amount }) {

@@ -1,4 +1,11 @@
 import type { LlmCall } from '../../llm';
+import type { Provider } from '../../llm/types';
+import type {
+   AgentFailure,
+   AgentRun,
+   AttemptTrace,
+   Repair,
+} from '../agent/loop';
 
 export type ToolName =
    | 'getWeather'
@@ -28,26 +35,49 @@ export type ExecutedStep = {
 
 // ---- Trace (observability only; never feeds back into routing) ----
 
-export type PlannerSource = 'primary' | 'fallback' | 'generalChat';
+/**
+ * legacy: primary planner / fallback planner / both failed → generalChat.
+ * tools: primary attempt / escalated to plannerFallback / both attempts failed.
+ */
+export type PlannerSource = 'primary' | 'fallback' | 'generalChat' | 'failed';
 
-/** 'output' = numericValue was parsed from the tool output. */
-export type NumericSource = 'output';
+/** 'output' = parsed from the tool output (legacy); 'tool' = returned by the tool (agent). */
+export type NumericSource = 'output' | 'tool';
 
-export type AnswerSource = 'synthesis' | 'lastStep';
+export type AnswerSource = 'synthesis' | 'lastStep' | 'chat';
 
 export type StepTrace = ExecutedStep & {
+   /** Agent only: false = the tool ran but could not produce the fact. */
+   ok?: boolean;
    numericSource: NumericSource | null;
    latencyMs: number;
    llmCalls: LlmCall[];
 };
 
+export type AgentAttemptTrace = Omit<AttemptTrace, 'steps'> & {
+   provider: Provider;
+   model: string;
+   /** Executed tool names, in order (the last attempt's steps are in RouterTrace.steps). */
+   tools: string[];
+};
+
+export type AgentTrace = {
+   outcome: AgentRun['outcome'];
+   attempts: AgentAttemptTrace[];
+   repairs: Repair[];
+   escalation?: AgentFailure;
+   failure?: AgentFailure;
+};
+
 export type RouterTrace = {
    input: string;
+   agentMode: 'legacy' | 'tools';
    plannerSource: PlannerSource;
    plannerErrors: string[];
    plannerCalls: LlmCall[];
-   rawPlan: RouterPlan; // planner output
-   plan: RouterPlan; // after sanitizeRoute
+   rawPlan?: RouterPlan; // legacy: planner output
+   plan?: RouterPlan; // legacy: after sanitizeRoute
+   agent?: AgentTrace; // tools only
    steps: StepTrace[];
    answerSource: AnswerSource;
    finalAnswer: string;
