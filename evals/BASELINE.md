@@ -127,6 +127,70 @@ FX behavior (unit-tested with a mocked fetch and clock in `services/apps/exchang
 
 Ran both configs in parallel (they share Ollama only for embeddings).
 
+## Phase 4
+
+`--runs 3`. Δ is against the phase 4 reference above (81/90 for both configs); ±2 is noise.
+
+| Step                               | Commit    | Config      | Agent  | Overall         | Δ   | tools / derived / judge | Repair / escalation | Cost router |
+| ---------------------------------- | --------- | ----------- | ------ | --------------- | --- | ----------------------- | ------------------- | ----------- |
+| reference                          | `81801af` | default     | legacy | 81/90 (90%)     | —   | 81 / 21/21 / 27/27      | — / 7% fallback     | $0.099      |
+| reference                          | `81801af` | openai-only | legacy | 81/90 (90%)     | —   | 81 / 21/21 / 27/27      | — / 0% fallback     | $0.155      |
+| 4.1 tool defs + `llm.chat` (no-op) | `a8a1153` | default     | legacy | 81/90 (90%)     | 0   | 81 / 21/21 / 27/27      | — / 7% fallback     | $0.100      |
+| 4.2 agent loop                     | `5ed7b29` | default     | tools  | **81/90 (90%)** | 0   | 84 / 18/21 / 27/27      | 0% / 0%             | $0.111      |
+| 4.2 agent loop                     | `5ed7b29` | openai-only | tools  | **84/90 (93%)** | +3  | 84 / 21/21 / 27/27      | 0% / 0%             | $0.251      |
+
+### 4.2 per category (reference → tools)
+
+| Category        | default        | openai-only    |
+| --------------- | -------------- | -------------- |
+| single-tool     | 12 → **15**/15 | 12 → **15**/15 |
+| rag             | 24 → 24/24     | 24 → 24/24     |
+| multi-tool      | 18 → **15**/24 | 18 → 18/24     |
+| unknown-product | 9 → 9/9        | 9 → 9/9        |
+| chit-chat       | 9 → 9/9        | 9 → 9/9        |
+| ambiguous       | 9 → 9/9        | 9 → 9/9        |
+| **overall**     | **81 → 81**    | **81 → 84**    |
+
+**Fixed by the agent (every reference failure is gone in both configs):** `st-review` 0 → 3/3 (no "ils"-in-"emails" injection), `mt-total-brewmaster-neobook` 0 → 3/3 and, on openai-only, `mt-total-tidal-aurora` 0 → 3/3 (2× product + rate + one math, no 5-step rewrite). gemma4's `st-math-*` broken-JSON fallback (7%) is gone: **0 repairs, 0 escalations and 0 invalid tool calls in 180 runs.**
+
+### 4.2 failures: real vs. valid alternative paths
+
+The tools scorer accepts one exact tool sequence. Of the 15 failing runs, **12 are valid alternative paths** with correct answers, and **3 are real failures**. Cases are unchanged pending review.
+
+| Case                    | Config      | Runs | Kind             | What happened                                                                                                                                                                                                                                                                                                  |
+| ----------------------- | ----------- | ---- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mt-budget-skyline`     | default     | 0/3  | alternative      | Two-step math: `689 * 3.1259`, then `3000 - 2153.7451` → **846.25** (correct). Expected one `calculateMath`.                                                                                                                                                                                                   |
+| `mt-missing-aurora`     | default     | 0/3  | alternative      | Computes both the GPS (249) and LTE (299) models: 2–4 math steps, GPS answer **278.35** correct (derived 3/3). In 2 runs there was also a useless `getExchangeRate(ILS, 500)` ("ILS is the base currency").                                                                                                    |
+| `mt-budget-printforge`  | openai-only | 0/3  | alternative (\*) | Converts with `getExchangeRate(USD, amount 25)` → "25 USD = 78.15 ILS", then `100 - 78.15` → **21.85** (correct). (\*) In the same first turn it also issues a premature `calculateMath("100 - 0")`, a call that depends on a result it doesn't have yet. Wasted, but harmless.                                |
+| `mt-missing-evophone`   | openai-only | 0/3  | alternative      | Two-step math: `799 * 3.1259`, then `2497.5941 - 1500` → **997.59** (correct).                                                                                                                                                                                                                                 |
+| `mt-total-tidal-aurora` | default     | 0/3  | **real**         | gemma4 sums both Aurora variants into one total, `(429 + 249 + 299) * 3.1259` = 3054, and the answer presents it as "Tidal + GPS" (expected 2119.36). **In 2 runs synthesis then computed "3210.26 ILS" for the LTE variant itself.** That number is in no tool output, which violates the no-arithmetic rule. |
+
+**Scorer-independent pass rate** (alternatives counted as passes): default **87/90**, openai-only **90/90**.
+
+**Synthesis arithmetic check:** a scan of every synthesized answer for numbers ≥ 10 that appear in no tool output, input or arguments (rounding allowed) found 2/78 runs on default (the two `mt-total-tidal-aurora` runs above) and 0/78 on openai-only. Legacy had no such check; the 3.4 data showed it happening 9/9 when a math step failed. The prompt rule mostly holds, but "never computes" is not yet guaranteed.
+
+### Cost, latency, iterations
+
+|                            | default ref → tools | openai-only ref → tools |
+| -------------------------- | ------------------- | ----------------------- |
+| Latency p50 / p95          | 2.2/5.7s → 3.8/6.7s | 2.5/5.1s → 4.4/6.9s     |
+| Router tokens in           | 162k → 300k         | 151k → 267k             |
+| Router cost                | $0.099 → $0.111     | $0.155 → $0.251         |
+| Mean model turns per run   | —                   | 2.13 / 2.10             |
+| Chat answers (no tool ran) | —                   | 13% / 13%               |
+
+Latency and tokens grow because:
+
+- a tool request takes ≥ 2 planner turns, each resending the system prompt and tool schemas, plus a separate synthesis call
+- single-tool answers (RAG, weather) used to be the tool output itself (`lastStep`, no synthesis); now they always go through synthesis
+
+Default stays cheap because the planner turns are local. On openai-only the router cost rises 62%. Turns per run (default/openai-only): 1 → 12/12 runs, 2 → 60/60, 3 → 12/15, 4 → 6/3.
+
+### What 4.2 doesn't show
+
+- **Repair and escalation never fired on real data** (0/180), so those paths are covered only by the mocked-LLM unit tests (`services/agent/loop.test.ts`).
+- Precision: `getExchangeRate` rounds converted amounts to 2 decimals, and the model then computes with the rounded value (`100 - 78.15` instead of `100 - 78.1475`). The 4.2 fix covers only amount 1 (the rate itself). The effect is under 0.005 ILS per unit converted.
+
 ## Step 2.6: planner prompt fix (`006458d`)
 
 This is a prompt-only change to `classifierPromptLocal`. It lists each tool with its exact canonical parameter names (`city`, `currencyCode`, `expression`, `reviewText`, `product_name` + `query`, `userInput`), gives one example per tool plus one chaining example, and adds an explicit "raw JSON only, no code fences" rule. None of the examples come from `evals/cases.json`: they use Tokyo, GBP, 12 \* 9 + 4, 900 ILS / 60 GBP and a "Nimbus Kettle K2" that isn't in the KB. The only token they share with the golden set is the digit `2`. Code, `policy.ts`, stop sequences and the fallback prompt are unchanged.
