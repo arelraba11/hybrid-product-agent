@@ -206,7 +206,10 @@ Tags cut across categories: `readme` (the demo scenarios), `new-product` (produc
 
 ### Scorers
 
-A run passes only if every applicable scorer passes (except `grounded_numbers`).
+A run passes only if every applicable scorer passes. The exception is `grounded_numbers`, which only measures whether every number in an answer came from a tool.
+
+<details>
+<summary>All seven scorers</summary>
 
 | Scorer             | Checks                                                                                                                                                                                                                                            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -217,6 +220,8 @@ A run passes only if every applicable scorer passes (except `grounded_numbers`).
 | `derived`          | Recomputes the expected ILS number from the **live rate recorded in the trace** and the KB's canonical price line, then checks the answer within max(1 ILS, 0.5%). FX cases stay valid as rates move.                                             |
 | `judge`            | LLM judge (`gpt-5.4-mini` in every config, so judging stays comparable) with a per-case rubric. On openai-only it shares a model with the system under test.                                                                                      |
 | `grounded_numbers` | **Informational, never fails a run.** Every number in a tool-backed answer must appear in a tool output or the user input (rounding, separators and sign allowed). It catches synthesis doing its own math: a right number that no tool produced. |
+
+</details>
 
 ### Running it
 
@@ -240,19 +245,26 @@ By category, default fails only on `multi-tool` (21/24). Every other category is
 
 ### Iterations: v1 → v2
 
-**v1** was a JSON planner. One LLM call produced the whole plan as JSON with placeholders (`<result_from_tool_3>`), and a heuristics layer (`policy.ts`) normalized parameter aliases, rewrote plans by keyword and filled templated answers. **v2** is the native tool-calling agent described above, and `policy.ts`, the placeholders and the templates are deleted. Scores for the default config:
+**v1** was a JSON planner. One LLM call produced the whole plan as JSON with placeholders (`<result_from_tool_3>`), and a heuristics layer (`policy.ts`) normalized parameter aliases, rewrote plans by keyword and filled templated answers. **v2** is the native tool-calling agent described above, and `policy.ts`, the placeholders and the templates are deleted.
 
-| Step                                         | Default   | Notes                                                                               |
-| -------------------------------------------- | --------- | ----------------------------------------------------------------------------------- |
-| v1 baseline                                  | 24/90     | openai-only 27–30/90 (run-to-run variance)                                          |
-| v1 + planner prompt fix                      | 76/90     | openai-only 78/90                                                                   |
-| v1 + eval hygiene                            | 80/90     | ⚠ `amb-drone-price` moved to a judge rubric (+3 of the +4)                          |
-| v1, hardcoded data removed, live FX          | 79/90     | Dipped to 72 mid-way (see below)                                                    |
-| v1 + eval hygiene                            | 81/90     | ⚠ relative `derived` tolerance; one case's budget changed. openai-only 81/90        |
-| v1 re-scored with the current `tools` scorer | 87/90     | ⚠ scorer change: repeated tools and valid alternative paths pass. openai-only 87/90 |
-| **v2: native tool calling**                  | **87/90** | openai-only **90/90**. Same scorers as the row above                                |
+On the current scorers, v2 ties v1 on default (87 vs. 87, with a different failing case) and gains 3 on openai-only. The bigger v2 wins are in what the overall score doesn't show: grounded numbers 83% → 99%, no keyword misfires and no broken-JSON fallbacks. The commit that removed v1 (`7427773`) deleted 1,266 lines of server code and added 42. That counts `packages/server` without tests, eval scripts and `.env.example`; docs aren't included. 510 of the deleted lines are the plan rewriter (`policy.ts`) and the placeholder module, and most of the rest is the v1 router and planner prompts. The cost is about 1.5 s more p50 latency (an extra planner turn, plus synthesis on every tool answer) and +65% router cost on openai-only.
 
-⚠ marks rows where the scorer or a case changed, so the delta isn't purely architectural. **Compare only adjacent rows that share a scorer.** On the current scorers, v2 ties v1 on default (87 vs. 87, with a different failing case) and gains 3 on openai-only. The bigger v2 wins are in what the overall score doesn't show: grounded numbers 83% → 99%, no keyword misfires, no broken-JSON fallbacks, and 1,454 lines of planner and heuristics code deleted. The cost is about 1.5 s more p50 latency (an extra planner turn, plus synthesis on every tool answer) and +65% router cost on openai-only.
+<details>
+<summary>Score history, step by step (default config)</summary>
+
+| Step                                         | Default   | Notes                                                                                                                 |
+| -------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------- |
+| v1 baseline                                  | 24/90     | openai-only 27–30/90 (run-to-run variance)                                                                            |
+| v1 + planner prompt fix                      | 76/90     | openai-only 78/90                                                                                                     |
+| v1 + judge rubric for `amb-drone-price`      | 80/90     | ⚠ the case was scored by any-of phrases before (+3 of the +4); fallback-prompt examples replaced with non-golden ones |
+| v1, hardcoded data removed, live FX          | 79/90     | Dipped to 72 mid-way (see below)                                                                                      |
+| v1 + relative `derived` tolerance            | 81/90     | ⚠ tolerance max(1 ILS, 0.5%), was 0.01 absolute; `mt-missing-evophone` budget 2500 → 1500 ILS. openai-only 81/90      |
+| v1 re-scored with the current `tools` scorer | 87/90     | ⚠ scorer change: repeated tools and valid alternative paths pass. openai-only 87/90                                   |
+| **v2: native tool calling**                  | **87/90** | openai-only **90/90**. Same scorers as the row above                                                                  |
+
+⚠ marks rows where the scorer or a case changed, so the delta isn't purely architectural. **Compare only adjacent rows that share a scorer.**
+
+</details>
 
 ### What the evals uncovered
 
@@ -286,7 +298,8 @@ bun run eval --config evals/configs/default.env --runs 3
 
 Editing `data/products/*.txt` or changing `EMBEDDING_MODEL` requires `bun run index-kb`. A model change means a full reindex.
 
-### Repository layout
+<details>
+<summary>Repository layout</summary>
 
 ```
 packages/server/
@@ -301,6 +314,8 @@ packages/client/    React chat UI
 data/products/      knowledge-base source documents
 evals/              golden set, configs, BASELINE.md
 ```
+
+</details>
 
 ---
 
