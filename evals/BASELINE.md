@@ -64,6 +64,7 @@ Default config, `--runs 3`, one row per step. Δ is against the 80/90 reference 
 | 3.2 remove `knownUsdPriceForProduct` | `d91c5b0` | **78/90 (87%)** | −2  | 81 / 21/21 / 24/27      | 7%       | 16%         | — (removed)    |
 | 3.3 remove templated finance answers | `c11bf8d` | **81/90 (90%)** | +1  | 81 / 21/21 / 27/27      | 7%       | — (removed) | —              |
 | 3.4 live FX rates (Frankfurter)      | `b000191` | **72/90 (80%)** | −8  | 81 / 12/21 / 27/27      | 7%       | —           | —              |
+| 3.5 fix stale `exchangeIndex`        | `987913c` | **79/90 (88%)** | −1  | 81 / 19/21 / 27/27      | 7%       | —           | —              |
 
 **3.1:** the filter now resolves `BrewMaster Y` → `brewmaster y coffee machine` and `NeoBook Air 14` → `neobook air 14 laptop`. `EvoPhone Z` / `PixelPad Pro` match nothing and use the global search, as before. Retrieval for "What is the price in USD?" + NeoBook used to return ElectroRide/PrintForge/Skyline chunks and now returns only NeoBook chunks. `mt-total-brewmaster-neobook`: NeoBook's `numericValue` is **1099** (`output`, was 14), the answer is 5,430 ILS, and **derived goes 0 → 3/3**. The case still fails on tools (the `sanitizeRoute` 5-step rewrite, phase 4).
 
@@ -88,7 +89,9 @@ Cost: router $0.090 → $0.099 and tokens in 155k → 161k, because synthesis no
 
 FX behavior (unit-tested with a mocked fetch and clock in `services/apps/exchange.app.test.ts`): 1 h fresh cache. A failed refresh serves a cached rate up to 24 h old, labeled; after that, or with no cache, the tool returns an error string with no number. 404 → "I don't have a rate for X". The live API took ~50–130 ms per currency, and repeats are cache hits.
 
-**Phase 3 summary:** the price table, templated answers and static rates are gone, and the KB filter matches real product names. Default goes 80 → 72/90, and the whole −8 is the `sanitizeRoute` math bug above (81/90 before live rates). Remaining failures, all `policy.ts` (phase 4): `st-review` ("ils" in "emails"), `mt-total-*` (5-step rewrite, tools only, numbers right), `mt-budget-skyline` / `mt-missing-*` (stale `exchangeIndex`).
+**3.5:** a one-line `policy.ts` change. The budget branch now reads `exchangeIndex` after removing the planner's `calculateMath` steps, so the rebuilt math references the exchange step instead of itself. All 9 budget runs now compute in the math tool (`3000 - ((689) * 3.1259)` → 846.25, `((249) * 3.1259) - 500` → 278.35, `((799) * 3.1259) - 2500` → −2.41). `mt-budget-skyline` and `mt-missing-aurora` go 0 → 3/3. `mt-missing-evophone` is 1/3. In the 2 failing runs the math tool is right, but synthesis rounds the near-zero result to "about 2,498 ILS … about 2 ILS extra", and the 0.01 derived tolerance rejects that. At 3.75 the gap was 496 ILS, so rounding didn't matter. This is scorer strictness on a rate-dependent edge case, not a wrong number.
+
+**Phase 3 summary:** the price table, templated answers and static rates are gone, and the KB filter matches real product names. **Default 80 → 79/90 (`987913c`): this is the phase 4 reference.** The 3.4 dip to 72 was the stale-`exchangeIndex` bug, which only stayed hidden because synthesis could do arithmetic at 3.75 (the underlying issue, that synthesis computes numbers when a tool step fails, is in CLAUDE.md known issues for phase 4). Remaining failures: `st-review` ("ils" in "emails"), `mt-total-*` (5-step rewrite; tools only, numbers right), all in `policy.ts`; and `mt-missing-evophone` 2/3 (synthesis rounding, above).
 
 ## Step 2.6: planner prompt fix (`006458d`)
 

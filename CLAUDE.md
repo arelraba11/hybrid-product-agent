@@ -26,13 +26,12 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 1. **Infra + model upgrade** (done; verified 2026-10-28): python-service removed (embeddings via Ollama `embeddinggemma`, vectors in SQLite with brute-force cosine in TS — no sqlite-vec), Prisma MySQL → SQLite, per-component provider config, models → `gemma4:12b` / `gpt-5.4-mini`, Responses API structured output. Planner + chat run on `gemma4:12b` (needs `PLANNER_THINK`/`CHAT_THINK=false`) and on `phi3` (legacy). All 5 README smoke scenarios work on the default config since step 2.6.
 2. **Eval harness** (done 2026-10-28; openai-only, default and legacy baselines in `evals/BASELINE.md`): richer KB + 3 new products, router trace, golden set (`evals/cases.json`), `bun run eval`. Default 24/90, legacy 66/90, openai-only 30/90. Default needs `PLANNER_THINK=false` (gemma4 otherwise spends its whole token budget thinking → ~100% fallback).
    - **2.6 Planner prompt fix** (done, `006458d`): canonical parameter names + one example per tool (not from the golden set) + no-code-fences rule in `classifierPromptLocal`. openai-only 27 → 78/90, default 24 → 76/90, legacy 66 → 72/90 (`evals/BASELINE.md`, "Step 2.6").
-3. **Remove hardcoded data** (done 2026-10-28; per-step rows in `evals/BASELINE.md`, "Phase 3"): 3.1 token/prefix KB product filter (`productMatch.ts`), 3.2 `knownUsdPriceForProduct` removed, 3.3 `buildDeterministicFinanceMessage` removed (synthesis answers), 3.4 live FX (Frankfurter, cached, never a hardcoded rate). Default 80 → 81/90 through 3.3, **72/90 after 3.4**: live rates expose the stale-`exchangeIndex` math bug in `sanitizeRoute` (3 cases, synthesis does the arithmetic and gets 4-digit rates wrong) — see Known issues.
-4. **Native tool calling + escalation** (← next phase): replace the JSON planner, `policy.ts` and placeholders with schema-based tool calling. Math is also a candidate for local-first + escalation: its failure is detectable (the expression must pass the whitelist and evaluate).
+3. **Remove hardcoded data** (done 2026-10-28; per-step rows in `evals/BASELINE.md`, "Phase 3"): 3.1 token/prefix KB product filter (`productMatch.ts`), 3.2 `knownUsdPriceForProduct` removed, 3.3 `buildDeterministicFinanceMessage` removed (synthesis answers), 3.4 live FX (Frankfurter, cached, never a hardcoded rate), 3.5 stale-`exchangeIndex` fix in `sanitizeRoute` (live rates exposed it: 3.4 dipped to 72/90 because synthesis did the arithmetic for a self-referencing math step). **Default 80 → 79/90 at `987913c`: the phase 4 reference.**
+4. **Native tool calling + escalation** (← current phase): replace the JSON planner, `policy.ts` and placeholders with schema-based tool calling. Math is also a candidate for local-first + escalation: its failure is detectable (the expression must pass the whitelist and evaluate).
 
 **Next steps, in order:**
 
-1. Decide on the stale-`exchangeIndex` fix in `policy.ts` (one line, −8 → ~0 expected) vs leaving it for phase 4.
-2. Phase 4. Compare against the phase 3 end state in `evals/BASELINE.md` (default 72/90 at `b000191`).
+1. Phase 4. Compare every step against the phase 3 end state (default 79/90 at `987913c`, "Phase 3" in `evals/BASELINE.md`).
 
 ## Working rules
 
@@ -57,7 +56,7 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 
 ---
 
-## Current state (phase 3 done; phase 4 next — update as phases land)
+## Current state (phase 3 done; phase 4 current — update as phases land)
 
 ### Commands
 
