@@ -1,5 +1,6 @@
 // Eval runner. From the repo root:
 //   bun run eval --config evals/configs/openai-only.env --runs 3 [--agent legacy|tools] [--filter <id|category|tag>] [--verbose]
+//   bun run eval --rescore evals/results/<file>.json   (re-score saved traces offline, no LLM calls)
 // Runs every case in-process through routerService with an isolated in-memory history,
 // scores it, prints a summary and writes raw results (with traces) to evals/results/.
 import path from 'path';
@@ -9,7 +10,8 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 import { COMPONENTS } from '../llm/types';
 import { REPO_ROOT, loadCases, type EvalCase } from './eval/cases';
-import { scoreDeterministic, type Score } from './eval/scorers';
+import { runPasses, scoreDeterministic, type Score } from './eval/scorers';
+import { rescore } from './eval/rescore';
 import {
    formatReport,
    summarize,
@@ -24,12 +26,18 @@ const { values: args } = parseArgs({
       filter: { type: 'string' },
       agent: { type: 'string', default: 'legacy' },
       verbose: { type: 'boolean', default: false },
+      rescore: { type: 'string' },
    },
 });
 
+if (args.rescore) {
+   rescore(path.resolve(REPO_ROOT, args.rescore));
+   process.exit(0);
+}
+
 if (!args.config) {
    console.error(
-      'Usage: bun run eval --config evals/configs/<name>.env [--runs N] [--agent legacy|tools] [--filter id|category|tag] [--verbose]'
+      'Usage: bun run eval --config evals/configs/<name>.env [--runs N] [--agent legacy|tools] [--filter id|category|tag] [--verbose]\n       bun run eval --rescore evals/results/<file>.json'
    );
    process.exit(1);
 }
@@ -162,7 +170,7 @@ async function runCase(c: EvalCase, run: number): Promise<RunRecord> {
 
       return {
          run,
-         pass: scores.every((s) => s.pass),
+         pass: runPasses(scores),
          scores,
          trace,
          judgeCalls,

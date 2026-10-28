@@ -191,6 +191,29 @@ Default stays cheap because the planner turns are local. On openai-only the rout
 - **Repair and escalation never fired on real data** (0/180), so those paths are covered only by the mocked-LLM unit tests (`services/agent/loop.test.ts`).
 - Precision: `getExchangeRate` rounds converted amounts to 2 decimals, and the model then computes with the rounded value (`100 - 78.15` instead of `100 - 78.1475`). The 4.2 fix covers only amount 1 (the rate itself). The effect is under 0.005 ILS per unit converted.
 
+### 4.2b: scorer change, re-scored offline
+
+`bun run eval --rescore <file>` re-runs the deterministic scorers on saved traces. There are no LLM calls, so the judge verdicts are the recorded ones. Two changes:
+
+- **tools:**
+   - Every required tool must run at least as often as listed; repeats of required tools are fine.
+   - Any other tool must be in `allow_extra`, so `[]` still means "no tools" and `st-review`'s injected `getExchangeRate` still fails.
+   - `ordered` is now optional. It means "subsequence in this order" and no case sets it: no case depends on order, and `mt-review-rag`'s two calls are independent.
+   - Correctness is left to derived/contains/judge.
+- **grounded_numbers (measurement only, never fails a run):** every number in a tool-backed answer must appear in a tool output or the user input. Rounding to the answer's precision, thousands separators and sign are allowed, and markdown list markers are ignored. Answers where no tool ran are not scored.
+
+| Run                     | Overall old → new | tools old → new | grounded_numbers |
+| ----------------------- | ----------------- | --------------- | ---------------- |
+| reference default       | 81 → **87**/90    | 81 → 87         | 65/78 (83%)      |
+| reference openai-only   | 81 → **87**/90    | 81 → 87         | 63/75 (84%)      |
+| 4.2 default (tools)     | 81 → **87**/90    | 84 → 90         | 76/78 (97%)      |
+| 4.2 openai-only (tools) | 84 → **90**/90    | 84 → 90         | 78/78 (100%)     |
+
+- **Reference, new scorer:** the 5-step `mt-total-*` rewrites now pass (repeated math), and `st-review` 0/3 is still the only failure.
+- **4.2, new scorer:** all 12 alternative-path runs pass. The only failure left is `mt-total-tidal-aurora` on default, 0/3 on derived.
+
+**grounded_numbers finds synthesis arithmetic on the legacy agent.** In every legacy budget answer (`mt-budget-*`, `mt-missing-*`, 12/12 runs per config), the math tool computed only the final expression, e.g. `3000 - ((689) * 3.1259)`. Synthesis then stated the intermediate cost itself: "689 USD … about **2,153.75 ILS**", "25 USD × 3.1259 = **78.15 ILS**". Those numbers were right, but no tool produced them. The agent does that step in its own `calculateMath` call, so it is grounded. On the agent, the only ungrounded numbers are the 2 `mt-total-tidal-aurora` runs ("3210.26", synthesis computing the LTE total).
+
 ## Step 2.6: planner prompt fix (`006458d`)
 
 This is a prompt-only change to `classifierPromptLocal`. It lists each tool with its exact canonical parameter names (`city`, `currencyCode`, `expression`, `reviewText`, `product_name` + `query`, `userInput`), gives one example per tool plus one chaining example, and adds an explicit "raw JSON only, no code fences" rule. None of the examples come from `evals/cases.json`: they use Tokyo, GBP, 12 \* 9 + 4, 900 ILS / 60 GBP and a "Nimbus Kettle K2" that isn't in the KB. The only token they share with the golden set is the digit `2`. Code, `policy.ts`, stop sequences and the fallback prompt are unchanged.

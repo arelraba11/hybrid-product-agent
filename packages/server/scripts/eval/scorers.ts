@@ -9,9 +9,21 @@ export type ScorerName =
    | 'contains'
    | 'not_contains'
    | 'derived'
+   | 'grounded_numbers'
    | 'judge';
 
-export type Score = { scorer: ScorerName; pass: boolean; detail?: string };
+/** informational: reported, but doesn't decide whether the run passes (measurement only). */
+export type Score = {
+   scorer: ScorerName;
+   pass: boolean;
+   detail?: string;
+   informational?: boolean;
+};
+
+/** A run passes when every non-informational score passes. */
+export function runPasses(scores: Score[]): boolean {
+   return scores.every((s) => s.pass || s.informational);
+}
 
 /** Lowercase, straight quotes, thousands separators removed (32,900 -> 32900). */
 export function normalizeText(s: string): string {
@@ -43,10 +55,6 @@ function needleRegex(needle: string, wordEdges: boolean): RegExp {
    return new RegExp(pre + escapeRegex(n) + post);
 }
 
-function sameSequence(a: readonly string[], b: readonly string[]) {
-   return a.length === b.length && a.every((x, i) => x === b[i]);
-}
-
 function fmtTools(tools: readonly string[]) {
    return tools.length ? tools.join(' → ') : '(none)';
 }
@@ -56,24 +64,47 @@ export function executedTools(trace: RouterTrace): ToolName[] {
    return trace.steps.map((s) => s.tool).filter((t) => t !== 'generalChat');
 }
 
+function countTools(tools: readonly string[]): Map<string, number> {
+   const counts = new Map<string, number>();
+   for (const t of tools) counts.set(t, (counts.get(t) ?? 0) + 1);
+   return counts;
+}
+
+/** `needle` appears in `haystack` in order, not necessarily contiguously. */
+function isSubsequence(needle: readonly string[], haystack: readonly string[]) {
+   let i = 0;
+   for (const t of haystack) if (t === needle[i]) i++;
+   return i === needle.length;
+}
+
+// Required tools must all run (at least as often as listed); repeats and other tools in
+// allow_extra are fine, any other tool fails. Several valid paths exist (two-step math,
+// converting via getExchangeRate's amount), so correctness is left to derived/contains/judge.
 function scoreTools(c: EvalCase, trace: RouterTrace): Score {
    const expected = c.expect.tools;
    const extra = c.expect.allow_extra ?? [];
    const actual = executedTools(trace);
-   const considered = actual.filter(
-      (t) => expected.includes(t) || !extra.includes(t)
-   );
+   const got = countTools(actual);
 
-   const pass = c.expect.ordered
-      ? sameSequence(considered, expected)
-      : sameSequence([...considered].sort(), [...expected].sort());
+   const problems: string[] = [];
+   for (const [tool, need] of countTools(expected)) {
+      const n = got.get(tool) ?? 0;
+      if (n < need) problems.push(`missing ${tool} (${n}/${need})`);
+   }
+   const unexpected = [...got.keys()].filter(
+      (t) => !expected.includes(t as ToolName) && !extra.includes(t as ToolName)
+   );
+   if (unexpected.length) problems.push(`unexpected ${unexpected.join(', ')}`);
+   if (c.expect.ordered && !isSubsequence(expected, actual)) {
+      problems.push('out of order');
+   }
 
    return {
       scorer: 'tools',
-      pass,
-      detail: pass
-         ? undefined
-         : `expected ${fmtTools(expected)}${extra.length ? ` (+ optional ${extra.join(', ')})` : ''}, got ${fmtTools(actual)}`,
+      pass: !problems.length,
+      detail: problems.length
+         ? `${problems.join('; ')}: expected ${fmtTools(expected)}${extra.length ? ` (+ optional ${extra.join(', ')})` : ''}, got ${fmtTools(actual)}`
+         : undefined,
    };
 }
 
@@ -212,6 +243,49 @@ function scoreDerived(c: EvalCase, trace: RouterTrace): Score | null {
    };
 }
 
+function decimals(token: string): number {
+   return token.split('.')[1]?.length ?? 0;
+}
+
+// "2,498" grounds 2497.5941 (rounded to the answer's precision); signs are ignored
+// ("missing 2.41" vs -2.41).
+function grounds(source: number, token: string): boolean {
+   const n = Number(token);
+   const f = 10 ** decimals(token);
+   return Math.abs(Math.round(Math.abs(source) * f) / f - n) < 1e-9;
+}
+
+/**
+ * Every number in the answer must appear in a tool output or the user input, allowing
+ * rounding. Applies only when tools ran (not to chat answers). Measurement only for now.
+ */
+function scoreGroundedNumbers(trace: RouterTrace): Score | null {
+   const outputs = trace.steps
+      .filter((s) => s.tool !== 'generalChat')
+      .map((s) => s.output);
+   if (!outputs.length) return null;
+
+   const numbersIn = (text: string) =>
+      normalizeText(text).match(/\d+(?:\.\d+)?/g) ?? [];
+   const sources = [trace.input, ...outputs].flatMap(numbersIn).map(Number);
+   // Markdown list markers ("1. ") are formatting, not facts.
+   const answer = trace.finalAnswer.replace(/^\s*\d+[.)]\s/gm, '');
+   const ungrounded = [
+      ...new Set(
+         numbersIn(answer).filter((t) => !sources.some((m) => grounds(m, t)))
+      ),
+   ];
+
+   return {
+      scorer: 'grounded_numbers',
+      pass: !ungrounded.length,
+      informational: true,
+      detail: ungrounded.length
+         ? `not in any tool output or the input: ${ungrounded.join(', ')}`
+         : undefined,
+   };
+}
+
 export function scoreDeterministic(c: EvalCase, trace: RouterTrace): Score[] {
    return [
       scoreTools(c, trace),
@@ -219,5 +293,6 @@ export function scoreDeterministic(c: EvalCase, trace: RouterTrace): Score[] {
       scoreContains(c, trace.finalAnswer),
       scoreNotContains(c, trace.finalAnswer),
       scoreDerived(c, trace),
+      scoreGroundedNumbers(trace),
    ].filter((s): s is Score => s !== null);
 }

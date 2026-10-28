@@ -1,5 +1,5 @@
 {
-   "$comment": "Golden set. expect.tools excludes generalChat ([] = no tools); allow_extra = tools that may also appear without failing. answer_contains: every item required, an inner array is any-of. Matching is case-insensitive with thousands separators removed. derived: expected number computed from the trace's getExchangeRate rate and KB prices (products = data/products file stems).",
+   "$comment": "Golden set. expect.tools excludes generalChat ([] = no tools): every listed tool must run at least as often as listed; repeats are fine; allow_extra = other tools that may also run without failing; ordered: true also requires that order (none set: no case depends on order). answer_contains: every item required, an inner array is any-of. Matching is case-insensitive with thousands separators removed. derived: expected number computed from the trace's getExchangeRate rate and KB prices (products = data/products file stems).",
    "cases": [
       {
          "id": "st-weather-paris",
@@ -7,7 +7,6 @@
          "input": "What's the weather in Paris right now?",
          "expect": {
             "tools": ["getWeather"],
-            "ordered": true,
             "args": {
                "getWeather": {
                   "city": "paris"
@@ -23,7 +22,6 @@
          "input": "Convert 200 EUR to ILS.",
          "expect": {
             "tools": ["getExchangeRate"],
-            "ordered": true,
             "allow_extra": ["calculateMath"],
             "args": {
                "getExchangeRate": {
@@ -42,7 +40,6 @@
          "input": "What is (17 * 23) - 45?",
          "expect": {
             "tools": ["calculateMath"],
-            "ordered": true,
             "answer_contains": ["346"]
          }
       },
@@ -52,7 +49,6 @@
          "input": "A class has 28 students and each one needs 3 notebooks. How many notebooks are needed?",
          "expect": {
             "tools": ["calculateMath"],
-            "ordered": true,
             "answer_contains": ["84"]
          }
       },
@@ -61,8 +57,7 @@
          "category": "single-tool",
          "input": "Analyze this review: 'Delivery was fast, but the machine leaks water and support never answered my emails.'",
          "expect": {
-            "tools": ["analyzeReview"],
-            "ordered": true
+            "tools": ["analyzeReview"]
          },
          "judge": {
             "rubric": "The answer is a review analysis. Overall sentiment is Negative or Mixed (not Positive). It identifies delivery as positive, and both the leaking/product quality and customer support as negative. It does not invent aspects that are not in the review."
@@ -75,7 +70,6 @@
          "input": "How much RAM does EvoPhone X have?",
          "expect": {
             "tools": ["getProductInformation"],
-            "ordered": true,
             "args": {
                "getProductInformation": {
                   "product_name": "evophone"
@@ -91,7 +85,6 @@
          "input": "What is the average battery life of EvoPhone X?",
          "expect": {
             "tools": ["getProductInformation"],
-            "ordered": true,
             "args": {
                "getProductInformation": {
                   "product_name": "evophone"
@@ -107,7 +100,6 @@
          "input": "How big is the water tank on the BrewMaster Y?",
          "expect": {
             "tools": ["getProductInformation"],
-            "ordered": true,
             "args": {
                "getProductInformation": {
                   "product_name": "brewmaster"
@@ -122,7 +114,6 @@
          "input": "What is the range of the standard trim of the ElectroRide Z on a full charge?",
          "expect": {
             "tools": ["getProductInformation"],
-            "ordered": true,
             "args": {
                "getProductInformation": {
                   "product_name": "electroride"
@@ -137,7 +128,6 @@
          "input": "What is the promotional price of the PrintForge 3D Printer?",
          "expect": {
             "tools": ["getProductInformation"],
-            "ordered": true,
             "args": {
                "getProductInformation": {
                   "product_name": "printforge"
@@ -152,7 +142,6 @@
          "input": "What will the PrintForge 3D Printer cost after the promotion ends?",
          "expect": {
             "tools": ["getProductInformation"],
-            "ordered": true,
             "args": {
                "getProductInformation": {
                   "product_name": "printforge"
@@ -168,7 +157,6 @@
          "input": "How long does the Aurora Smartwatch S3 battery last?",
          "expect": {
             "tools": ["getProductInformation"],
-            "ordered": true,
             "args": {
                "getProductInformation": {
                   "product_name": "aurora"
@@ -184,7 +172,6 @@
          "input": "How much does the Skyline Drone M2 cost?",
          "expect": {
             "tools": ["getProductInformation"],
-            "ordered": true,
             "args": {
                "getProductInformation": {
                   "product_name": "skyline"
@@ -200,7 +187,6 @@
          "input": "What is the weather in Paris and what is the USD exchange rate today?",
          "expect": {
             "tools": ["getWeather", "getExchangeRate"],
-            "ordered": false,
             "args": {
                "getWeather": {
                   "city": "paris"
@@ -219,7 +205,6 @@
          "input": "Analyze this review on EvoPhone X: 'The phone is great but battery is weak', then tell me the average battery life from the KB.",
          "expect": {
             "tools": ["analyzeReview", "getProductInformation"],
-            "ordered": true,
             "args": {
                "analyzeReview": {
                   "reviewText": "battery is weak"
@@ -238,7 +223,6 @@
          "input": "If Yossi has 100 ILS and wants to buy PrintForge 3D Printer costing 25 USD, how many ILS remain?",
          "expect": {
             "tools": ["getExchangeRate", "calculateMath"],
-            "ordered": false,
             "allow_extra": ["getProductInformation"],
             "derived": {
                "kind": "remaining_ils",
@@ -258,7 +242,6 @@
                "getExchangeRate",
                "calculateMath"
             ],
-            "ordered": false,
             "args": {
                "getProductInformation": {
                   "product_name": "skyline"
@@ -282,7 +265,6 @@
                "getExchangeRate",
                "calculateMath"
             ],
-            "ordered": false,
             "args": {
                "getProductInformation": {
                   "product_name": "evophone"
@@ -306,7 +288,6 @@
                "getExchangeRate",
                "calculateMath"
             ],
-            "ordered": false,
             "args": {
                "getProductInformation": {
                   "product_name": "aurora"
@@ -331,7 +312,6 @@
                "getExchangeRate",
                "calculateMath"
             ],
-            "ordered": false,
             "args": {
                "getProductInformation": [
                   {
@@ -363,7 +343,6 @@
                "getExchangeRate",
                "calculateMath"
             ],
-            "ordered": false,
             "args": {
                "getProductInformation": [
                   {
@@ -386,7 +365,6 @@
          "input": "How much RAM does the Galaxy S30 Ultra have?",
          "expect": {
             "tools": [],
-            "ordered": true,
             "allow_extra": ["getProductInformation"],
             "answer_not_contains": ["12gb", "12 gb", "16gb", "16 gb"]
          },
@@ -400,7 +378,6 @@
          "input": "What is the price of the EvoPhone Z?",
          "expect": {
             "tools": [],
-            "ordered": true,
             "allow_extra": ["getProductInformation"],
             "answer_not_contains": ["799", "899"]
          },
@@ -415,7 +392,6 @@
          "input": "I have 1000 ILS. How many ILS will I have left after buying a PixelPad Pro tablet?",
          "expect": {
             "tools": [],
-            "ordered": true,
             "allow_extra": [
                "getProductInformation",
                "getExchangeRate",
@@ -432,7 +408,6 @@
          "input": "Hi! How are you today?",
          "expect": {
             "tools": [],
-            "ordered": true,
             "answer_not_contains": ["ils", "exchange rate", "°c"]
          },
          "judge": {
@@ -446,7 +421,6 @@
          "input": "Explain in two short paragraphs what a data lakehouse is.",
          "expect": {
             "tools": [],
-            "ordered": true,
             "answer_contains": ["lake"]
          },
          "judge": {
@@ -458,8 +432,7 @@
          "category": "chit-chat",
          "input": "Tell me a short joke about programmers.",
          "expect": {
-            "tools": [],
-            "ordered": true
+            "tools": []
          },
          "judge": {
             "rubric": "The reply is a short, recognizable joke about programmers (a few lines at most). It is not a refusal and does not mention tools or lookups."
@@ -471,7 +444,6 @@
          "input": "How much does the PrintForge cost?",
          "expect": {
             "tools": ["getProductInformation"],
-            "ordered": true,
             "args": {
                "getProductInformation": {
                   "product_name": "printforge"
@@ -489,7 +461,6 @@
          "input": "How long does the battery last?",
          "expect": {
             "tools": [],
-            "ordered": true,
             "allow_extra": ["getProductInformation"]
          },
          "judge": {
@@ -503,7 +474,6 @@
          "input": "How much does the drone cost?",
          "expect": {
             "tools": [],
-            "ordered": true,
             "allow_extra": ["getProductInformation"]
          },
          "judge": {

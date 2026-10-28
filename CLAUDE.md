@@ -71,9 +71,10 @@ ollama pull gemma4:12b && ollama pull embeddinggemma
 bun run dev        # server (bun --watch) + client (vite) via concurrently (index.ts)
 bun run index-kb   # (re)index data/products/*.txt into kb_chunks (scripts/index-kb.ts)
 bun run format     # prettier --write .
-bun test           # unit tests (bun:test): kb/productMatch, apps/exchange (mocked fetch + clock)
+bun test           # unit tests (bun:test): kb/productMatch, apps/exchange (mocked fetch + clock), agent/loop (mocked LLM), agent/tools, eval scorers
 ./scripts/smoke.sh # 5 README scenarios + 1 chat prompt against a running `bun run dev` (needs jq)
 bun run eval --config evals/configs/openai-only.env --runs 3   # golden set; also --agent legacy|tools, --filter <id|category|tag>, --verbose
+bun run eval --rescore evals/results/<file>.json               # re-score saved traces offline (no LLM calls; judge verdicts kept)
 
 cd packages/server && bun run typecheck            # tsc --noEmit
 cd packages/server && bunx prisma migrate dev      # SQLite at prisma/chatbot.db; also runs prisma generate
@@ -142,7 +143,7 @@ Source docs are `data/products/*.txt`; `scripts/index-kb.ts` chunks them (220 wo
 
 #### Evals (`evals/`, runner in `packages/server/scripts/eval.ts` + `scripts/eval/`)
 
-- `evals/cases.json` – golden set, validated by the zod schema in `scripts/eval/cases.ts`. `expect.tools` excludes `generalChat` (`[]` = no tools), `allow_extra` lists tolerated extra tools; `args` are case-insensitive substring facts per tool step; `answer_contains` (inner array = any-of) / `answer_not_contains` are normalized and number/word-boundary aware; `derived` computes the expected ILS number from the trace's `getExchangeRate` value (live since 3.4) and KB prices; tolerance max(1 ILS, 0.5% of expected) unless the case sets an absolute `tolerance`; `judge.rubric` → component `judge` (`EVAL_JUDGE_PROMPT`). Tags: `readme`, `hardcode-sensitive`, `fx-static`, `new-product`, `filter-mismatch`.
+- `evals/cases.json` – golden set, validated by the zod schema in `scripts/eval/cases.ts`. `expect.tools` excludes `generalChat` (`[]` = no tools); the tools scorer requires each listed tool at least as often as listed (repeats fine), any other tool must be in `allow_extra`, and optional `ordered` (no case sets it) requires that order as a subsequence; `args` are case-insensitive substring facts per tool step; `answer_contains` (inner array = any-of) / `answer_not_contains` are normalized and number/word-boundary aware; `derived` computes the expected ILS number from the trace's `getExchangeRate` value (live since 3.4) and KB prices; tolerance max(1 ILS, 0.5% of expected) unless the case sets an absolute `tolerance`; `judge.rubric` → component `judge` (`EVAL_JUDGE_PROMPT`); `grounded_numbers` (informational: reported per case, never fails a run) checks that every number in a tool-backed answer appears in a tool output or the input (rounding allowed). Tags: `readme`, `hardcode-sensitive`, `fx-static`, `new-product`, `filter-mismatch`.
 - `evals/configs/{default,legacy,openai-only}.env` – must set every component; the runner clears component vars inherited from `packages/server/.env` and dynamically imports the server after applying the config. Judge is gpt-5.4-mini in all configs.
 - Each case-run gets a fresh conversation id and in-memory history (never touches `history.json`). Raw results with full traces → `evals/results/` (gitignored); console prints per-case, category, tag and scorer pass rates plus latency p50/p95, tokens, router/judge cost and fallback rate.
 

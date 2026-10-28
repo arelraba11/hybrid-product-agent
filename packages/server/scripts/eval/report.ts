@@ -190,10 +190,21 @@ function failureCounts(runs: RunRecord[]): string {
    const counts = new Map<string, number>();
    for (const run of runs) {
       for (const s of run.scores) {
-         if (!s.pass) counts.set(s.scorer, (counts.get(s.scorer) ?? 0) + 1);
+         if (!s.pass && !s.informational) {
+            counts.set(s.scorer, (counts.get(s.scorer) ?? 0) + 1);
+         }
       }
    }
    return [...counts].map(([k, n]) => `${k}×${n}`).join(' ');
+}
+
+/** Passes/applicable runs of a measurement-only scorer; '-' when it never applied. */
+function informationalRate(runs: RunRecord[], scorer: ScorerName): string {
+   const scores = runs.flatMap((run) =>
+      run.scores.filter((s) => s.scorer === scorer)
+   );
+   if (!scores.length) return '-';
+   return `${scores.filter((s) => s.pass).length}/${scores.length}`;
 }
 
 function rateRows(map: Record<string, Rate>): string[][] {
@@ -231,6 +242,7 @@ export function formatReport(results: CaseResult[], summary: Summary): string {
          r.category,
          `${passes}/${r.runs.length}`,
          secs(percentile(lat, 0.5)),
+         informationalRate(r.runs, 'grounded_numbers'),
          failureCounts(r.runs),
       ];
    });
@@ -245,7 +257,10 @@ export function formatReport(results: CaseResult[], summary: Summary): string {
    ];
 
    return [
-      table(['case', 'category', 'pass', 'p50', 'failures'], caseRows),
+      table(
+         ['case', 'category', 'pass', 'p50', 'grounded', 'failures'],
+         caseRows
+      ),
       '',
       table(
          ['category', 'pass', 'rate'],

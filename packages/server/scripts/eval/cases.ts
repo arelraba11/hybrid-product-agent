@@ -62,7 +62,8 @@ const DerivedSchema = z
 const ExpectSchema = z
    .object({
       tools: z.array(ToolNameSchema),
-      ordered: z.boolean(),
+      // Required tools must also run in this order (as a subsequence). Only where order matters.
+      ordered: z.boolean().optional(),
       allow_extra: z.array(ToolNameSchema).optional(),
       args: z
          .partialRecord(
