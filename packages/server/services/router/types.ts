@@ -33,7 +33,7 @@ export type PlannerSource = 'primary' | 'fallback' | 'generalChat';
 /** 'output' = numericValue was parsed from the tool output. */
 export type NumericSource = 'output';
 
-export type AnswerSource = 'deterministic' | 'synthesis' | 'lastStep';
+export type AnswerSource = 'synthesis' | 'lastStep';
 
 export type StepTrace = ExecutedStep & {
    numericSource: NumericSource | null;

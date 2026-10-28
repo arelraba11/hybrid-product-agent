@@ -35,7 +35,6 @@ export type Summary = {
    costUsd: { router: number | null; judge: number | null };
    fallbackRate: number; // plannerSource !== 'primary'
    plannerFailedRate: number; // both planners failed -> generalChat
-   deterministicAnswerRate: number;
    crashes: number;
 };
 
@@ -100,9 +99,6 @@ export function summarize(results: CaseResult[]): Summary {
       ),
       plannerFailedRate: fraction(
          traces.filter((t) => t.plannerSource === 'generalChat').length
-      ),
-      deterministicAnswerRate: fraction(
-         traces.filter((t) => t.answerSource === 'deterministic').length
       ),
       crashes: runs.filter(({ run }) => run.error !== undefined).length,
    };
@@ -202,7 +198,6 @@ export function formatReport(results: CaseResult[], summary: Summary): string {
             ['cost judge', usd(s.costUsd.judge)],
             ['fallback rate', pct(s.fallbackRate)],
             ['both planners failed', pct(s.plannerFailedRate)],
-            ['deterministic answers', pct(s.deterministicAnswerRate)],
             ['crashes', String(s.crashes)],
          ]
       ),

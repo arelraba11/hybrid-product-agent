@@ -18,7 +18,6 @@ import {
 } from '../repositories/history.repository';
 import { sanitizeRoute, detectCurrencyFromInput } from './router/policy';
 import { resolveParameters } from './router/placeholders';
-import { buildDeterministicFinanceMessage } from './router/postprocess';
 import type {
    AnswerSource,
    ExecutedStep,
@@ -425,21 +424,6 @@ async function executePlan(
          } finally {
             console.timeEnd(label);
          }
-      }
-
-      const deterministic = buildDeterministicFinanceMessage(
-         userInput,
-         executed,
-         safeRoute
-      );
-      if (deterministic) {
-         return {
-            message: deterministic,
-            intent: safeRoute.plan[0]?.tool ?? 'generalChat',
-            plan: safeRoute,
-            steps,
-            answerSource: 'deterministic',
-         };
       }
 
       const mustSynthesize =
