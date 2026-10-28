@@ -53,6 +53,24 @@ All three runs use the same planner prompt (`classifierPromptLocal` before step 
 
 **What phase 3 should move:** (a) removing `knownUsdPriceForProduct` shows which price passes depended on it, starting from the 23% hardcode rate. (b) removing `buildDeterministicFinanceMessage` should fix `up-pixelpad-budget`'s templated failure, change the 14% deterministic answers, and turn `mt-total-brewmaster-neobook`'s wrong 1361.25 into a synthesis answer. (c) live FX changes the `fx-static` numbers but not their scoring (derived reads the rate from the trace).
 
+## Phase 3
+
+Default config, `--runs 3`, one row per step. Δ is against the 80/90 reference above; ±2 is noise.
+
+| Step                               | Commit    | Overall         | Δ   | tools / derived / judge | Fallback | Templated | Hardcode price |
+| ---------------------------------- | --------- | --------------- | --- | ----------------------- | -------- | --------- | -------------- |
+| reference                          | `6c3f98a` | 80/90 (89%)     | —   | 81 / 18/21 / 26/27      | 7%       | 14%       | 23%            |
+| 3.1 token/prefix KB product filter | `bbe2251` | **76/90 (84%)** | −4  | 81 / 19/21 / 24/27      | 7%       | 17%       | 20%            |
+
+**3.1:** the filter now resolves `BrewMaster Y` → `brewmaster y coffee machine` and `NeoBook Air 14` → `neobook air 14 laptop`. `EvoPhone Z` / `PixelPad Pro` match nothing and use the global search, as before. Retrieval for "What is the price in USD?" + NeoBook used to return ElectroRide/PrintForge/Skyline chunks and now returns only NeoBook chunks. `mt-total-brewmaster-neobook`: NeoBook's `numericValue` is **1099** (`output`, was 14), the answer is 5,430 ILS, and **derived goes 0 → 3/3**. The case still fails on tools (the `sanitizeRoute` 5-step rewrite, phase 4).
+
+The −4 is outside the noise band, but neither losing case passes through code that 3.1 changed. Both have identical plans and tool outputs to the reference:
+
+- `mt-missing-aurora` 3 → 1: `Aurora Smartwatch S3` matched exactly before 3.1 too. The math step is `((249) * ) - 500` in both runs (see the stale-index bug below), so synthesis does the arithmetic, and in 2 runs gpt-5.4-mini wrote 249 × 3.75 = **934.75** (it's 933.75). LLM arithmetic variance on a broken math step.
+- `up-pixelpad-budget` 2 → 0: no name matches, so global search, the same as before. The RAG wording was "The KB does not contain pricing…" in all 3 runs. The math evaluated that to 1000, and the templated "You will have 1000 ILS remaining." fired. The reference notes the same wording-dependent variance. 3.3 removes the template.
+
+**Found (pre-existing, `policy.ts`, phase 4):** in budget questions that mention "ILS", `looksLikeExchangeQuestion` appends `getExchangeRate` _after_ the planner's math step. The budget branch then reads `exchangeIndex` before filtering out `calculateMath`. The stale index makes the rebuilt math reference itself (`<result_from_tool_3>` → empty), so the math step fails and synthesis does the arithmetic (`mt-missing-aurora`, `mt-missing-evophone`). The reference run has the same expressions.
+
 ## Step 2.6: planner prompt fix (`006458d`)
 
 This is a prompt-only change to `classifierPromptLocal`. It lists each tool with its exact canonical parameter names (`city`, `currencyCode`, `expression`, `reviewText`, `product_name` + `query`, `userInput`), gives one example per tool plus one chaining example, and adds an explicit "raw JSON only, no code fences" rule. None of the examples come from `evals/cases.json`: they use Tokyo, GBP, 12 \* 9 + 4, 900 ILS / 60 GBP and a "Nimbus Kettle K2" that isn't in the KB. The only token they share with the golden set is the digit `2`. Code, `policy.ts`, stop sequences and the fallback prompt are unchanged.
