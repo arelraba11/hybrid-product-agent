@@ -66,3 +66,21 @@ export async function analyzeReviewWithSelfCorrection(
 
    return await fixInconsistency(reviewText, analysis);
 }
+
+export function formatReviewAnalysis(analysis: ReviewAnalysis) {
+   const lines: string[] = [];
+   lines.push('Analyzing Review...');
+   lines.push(`Summary: ${analysis.summary}`);
+   lines.push(`Overall Sentiment: ${analysis.overall_sentiment}`);
+   lines.push(`Score: ${analysis.score}/10`);
+
+   if (analysis.aspects.length) {
+      lines.push('');
+      lines.push('Detailed Aspects:');
+      analysis.aspects.forEach((a, i) => {
+         lines.push(` ${i + 1}. ${a.topic} (${a.sentiment}): "${a.detail}"`);
+      });
+   }
+
+   return lines.join('\n');
+}

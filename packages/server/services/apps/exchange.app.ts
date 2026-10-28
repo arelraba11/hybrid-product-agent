@@ -80,14 +80,22 @@ function extractAmount(input: string): number | null {
    return null;
 }
 
-export async function getExchangeRate(
+export type ExchangeResult = {
+   ok: boolean;
+   text: string;
+   /** Rate to ILS (1 unit of the currency); null when no rate is available. */
+   rate: number | null;
+};
+
+/** Rate of `currencyCode` to ILS; with `amount`, also that amount converted. */
+export async function exchangeToIls(
    currencyCode: string,
-   userInput?: string
-): Promise<string> {
+   amount: number | null = null
+): Promise<ExchangeResult> {
    const code = currencyCode.trim().toUpperCase();
 
    if (code === 'ILS') {
-      return 'ILS is the base currency (1 ILS).';
+      return { ok: true, text: 'ILS is the base currency (1 ILS).', rate: 1 };
    }
 
    let live: Awaited<ReturnType<typeof rateToIls>>;
@@ -95,17 +103,23 @@ export async function getExchangeRate(
       live = await rateToIls(code);
    } catch (error) {
       if (error instanceof UnknownCurrencyError) {
-         return `I don't have a rate for ${code}.`;
+         return {
+            ok: false,
+            text: `I don't have a rate for ${code}.`,
+            rate: null,
+         };
       }
       console.error(`[fx] ${code}: live rate unavailable:`, error);
-      return `The live exchange rate for ${code} is unavailable right now. Please try again later.`;
+      return {
+         ok: false,
+         text: `The live exchange rate for ${code} is unavailable right now. Please try again later.`,
+         rate: null,
+      };
    }
 
-   // "rate N" must come first: the router parses the rate from it (extractNumericValue).
+   // "rate N" must come first: the legacy router parses the rate from it (extractNumericValue).
    const { rate, date, stale } = live;
    const source = `rate ${rate}, ECB reference rate of ${date}${stale ? ', cached: live update unavailable' : ''}`;
-
-   const amount = userInput ? extractAmount(userInput) : null;
 
    if (amount !== null && Number.isFinite(amount)) {
       const converted = amount * rate;
@@ -113,8 +127,21 @@ export async function getExchangeRate(
          ? converted.toFixed(0)
          : converted.toFixed(2);
 
-      return `${amount} ${code} = ${pretty} ILS (${source})`;
+      return {
+         ok: true,
+         text: `${amount} ${code} = ${pretty} ILS (${source})`,
+         rate,
+      };
    }
 
-   return `1 ${code} = ${rate} ILS (${source})`;
+   return { ok: true, text: `1 ${code} = ${rate} ILS (${source})`, rate };
+}
+
+/** Legacy router: the amount is the first "N USD|EUR|GBP|ILS" in the user input. */
+export async function getExchangeRate(
+   currencyCode: string,
+   userInput?: string
+): Promise<string> {
+   const amount = userInput ? extractAmount(userInput) : null;
+   return (await exchangeToIls(currencyCode, amount)).text;
 }

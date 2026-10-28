@@ -9,7 +9,10 @@ import { getWeather } from './apps/weather.app';
 import { calculateMath } from './apps/math.app';
 import { getExchangeRate } from './apps/exchange.app';
 import { generalChat } from './apps/general.app';
-import { analyzeReviewWithSelfCorrection } from './apps/reviewAnalyzer.app';
+import {
+   analyzeReviewWithSelfCorrection,
+   formatReviewAnalysis,
+} from './apps/reviewAnalyzer.app';
 import { getProductInformation } from './apps/productInformation.app';
 
 import {
@@ -196,29 +199,6 @@ async function classify(
    }
 }
 
-function formatReviewAnalysisForUser(analysis: {
-   summary: string;
-   overall_sentiment: string;
-   score: number;
-   aspects: Array<{ topic: string; sentiment: string; detail: string }>;
-}) {
-   const lines: string[] = [];
-   lines.push('Analyzing Review...');
-   lines.push(`Summary: ${analysis.summary}`);
-   lines.push(`Overall Sentiment: ${analysis.overall_sentiment}`);
-   lines.push(`Score: ${analysis.score}/10`);
-
-   if (analysis.aspects.length) {
-      lines.push('');
-      lines.push('Detailed Aspects:');
-      analysis.aspects.forEach((a, i) => {
-         lines.push(` ${i + 1}. ${a.topic} (${a.sentiment}): "${a.detail}"`);
-      });
-   }
-
-   return lines.join('\n');
-}
-
 function extractNumericValue(output: string): number | null {
    const rateMatch = output.match(/rate\s+([0-9]+(?:\.[0-9]+)?)/i);
    if (rateMatch) return Number(rateMatch[1]);
@@ -305,7 +285,7 @@ async function executeSingleStep(
 
          const analysis = await analyzeReviewWithSelfCorrection(reviewText);
          return {
-            output: formatReviewAnalysisForUser(analysis),
+            output: formatReviewAnalysis(analysis),
             numericValue: null,
          };
       }

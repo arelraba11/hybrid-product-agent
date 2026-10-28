@@ -14,16 +14,24 @@ function codeToText(code?: number): string {
 }
 
 export async function getWeather(city: string): Promise<string> {
+   return (await weatherFor(city)).text;
+}
+
+/** ok: false when the city is unknown or a weather API call fails. */
+export async function weatherFor(
+   city: string
+): Promise<{ ok: boolean; text: string }> {
+   const fail = (text: string) => ({ ok: false, text });
    const geoUrl =
       'https://geocoding-api.open-meteo.com/v1/search?count=1&name=' +
       encodeURIComponent(city);
 
    const geoRes = await fetch(geoUrl);
-   if (!geoRes.ok) return `I couldn't look up "${city}" right now.`;
+   if (!geoRes.ok) return fail(`I couldn't look up "${city}" right now.`);
 
    const geoJson: any = await geoRes.json();
    const first = geoJson?.results?.[0];
-   if (!first) return `I couldn't find a city named "${city}".`;
+   if (!first) return fail(`I couldn't find a city named "${city}".`);
 
    const { latitude, longitude, name, country } = first;
 
@@ -33,7 +41,7 @@ export async function getWeather(city: string): Promise<string> {
       '&current=temperature_2m,weather_code,wind_speed_10m';
 
    const wRes = await fetch(weatherUrl);
-   if (!wRes.ok) return 'Weather service error. Please try again.';
+   if (!wRes.ok) return fail('Weather service error. Please try again.');
 
    const wJson: any = await wRes.json();
    const current = wJson?.current;
@@ -42,10 +50,13 @@ export async function getWeather(city: string): Promise<string> {
    const wind = current?.wind_speed_10m as number | undefined;
    const code = current?.weather_code as number | undefined;
 
-   if (typeof temp !== 'number') return 'Weather data was unavailable.';
+   if (typeof temp !== 'number') return fail('Weather data was unavailable.');
 
    const desc = codeToText(code);
    const windPart = typeof wind === 'number' ? `, wind ${wind} km/h` : '';
 
-   return `${name}${country ? `, ${country}` : ''}: ${temp}°C, ${desc}${windPart}`;
+   return {
+      ok: true,
+      text: `${name}${country ? `, ${country}` : ''}: ${temp}°C, ${desc}${windPart}`,
+   };
 }

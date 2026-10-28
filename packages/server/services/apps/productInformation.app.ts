@@ -53,18 +53,35 @@ export async function getProductInformation(
    productName: string,
    query: string
 ): Promise<string> {
+   return (await productInformation(productName, query)).text;
+}
+
+/** ok: false only when retrieval or generation fails; "not in the KB" is a valid answer. */
+export async function productInformation(
+   productName: string,
+   query: string
+): Promise<{ ok: boolean; text: string }> {
    console.time('rag:total');
    try {
       const chunks = await retrieveProductChunks(productName, query);
 
       if (!chunks.length) {
-         return `I couldn't find information for "${productName}" in the local knowledge base.`;
+         return {
+            ok: true,
+            text: `I couldn't find information for "${productName}" in the local knowledge base.`,
+         };
       }
 
-      return await generateAnswer(productName, query, chunks);
+      return {
+         ok: true,
+         text: await generateAnswer(productName, query, chunks),
+      };
    } catch (error) {
       console.error('getProductInformation failed:', error);
-      return 'Product knowledge base is currently unavailable. Please try again.';
+      return {
+         ok: false,
+         text: 'Product knowledge base is currently unavailable. Please try again.',
+      };
    } finally {
       console.timeEnd('rag:total');
    }

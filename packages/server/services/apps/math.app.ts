@@ -43,14 +43,21 @@ async function translateWordProblemToExpression(
    }
 }
 
-function calculateExpression(expression: string): string {
-   const expr = expression.trim();
-   if (!expr) return 'Empty expression.';
+export type Evaluation =
+   | { ok: true; value: number }
+   | { ok: false; error: string };
 
-   // If you're using the safe Function-based evaluator:
+/** Arithmetic only: a character whitelist, then evaluation; the result must be finite. */
+export function evaluateExpression(expression: string): Evaluation {
+   const expr = expression.trim();
+   if (!expr) return { ok: false, error: 'Empty expression.' };
+
    const ALLOWED_CHARS = /^[0-9+\-*/().\s]+$/;
    if (!ALLOWED_CHARS.test(expr)) {
-      return 'Invalid expression. Use only numbers and + - * / ( ) .';
+      return {
+         ok: false,
+         error: 'Invalid expression. Use only numbers and + - * / ( ) .',
+      };
    }
    if (
       expr.includes('**') ||
@@ -58,23 +65,32 @@ function calculateExpression(expression: string): string {
       expr.includes('/*') ||
       expr.includes('*/')
    ) {
-      return 'Invalid expression.';
+      return { ok: false, error: 'Invalid expression.' };
    }
 
    try {
       const result = Function(`"use strict"; return (${expr});`)() as unknown;
 
       if (typeof result !== 'number' || !Number.isFinite(result)) {
-         return 'Result is undefined.';
+         return { ok: false, error: 'Result is undefined.' };
       }
-
-      const pretty = Number.isInteger(result)
-         ? result.toFixed(0)
-         : result.toString();
-      return `The result is ${pretty}`;
+      return { ok: true, value: result };
    } catch {
-      return "I couldn't compute that. Please check the expression.";
+      return {
+         ok: false,
+         error: "I couldn't compute that. Please check the expression.",
+      };
    }
+}
+
+export function formatResult(value: number): string {
+   const pretty = Number.isInteger(value) ? value.toFixed(0) : value.toString();
+   return `The result is ${pretty}`;
+}
+
+function calculateExpression(expression: string): string {
+   const r = evaluateExpression(expression);
+   return r.ok ? formatResult(r.value) : r.error;
 }
 
 export async function calculateMath(input: string): Promise<string> {
