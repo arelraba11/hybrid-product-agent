@@ -23,17 +23,16 @@ Hybrid design: **Ollama (local) + OpenAI API**. Each LLM component gets its prov
 
 Change one thing per phase so eval deltas are attributable. Do not do work from a later phase unless explicitly asked.
 
-1. **Infra + model upgrade** (code done; Ollama-backed verification pending): python-service removed (embeddings via Ollama `embeddinggemma`, vectors in SQLite with brute-force cosine in TS — no sqlite-vec), Prisma MySQL → SQLite, per-component provider config, models → `gemma4:12b` / `gpt-5.4-mini`, Responses API structured output. **Still to verify** (`./scripts/smoke.sh`): planner + chat on `gemma4:12b`, the 5 README scenarios on the default config, and the `phi3` legacy config.
-2. **Eval harness** (done; openai-only baseline in `evals/BASELINE.md`): richer KB + 3 new products, router trace, golden set (`evals/cases.json`), `bun run eval`. **Still to run at home** (needs `gemma4:12b`/`phi3`): default + legacy baselines, appended to `evals/BASELINE.md`.
+1. **Infra + model upgrade** (done; verified 2026-10-28): python-service removed (embeddings via Ollama `embeddinggemma`, vectors in SQLite with brute-force cosine in TS — no sqlite-vec), Prisma MySQL → SQLite, per-component provider config, models → `gemma4:12b` / `gpt-5.4-mini`, Responses API structured output. Planner + chat run on `gemma4:12b` (needs `PLANNER_THINK`/`CHAT_THINK=false`) and on `phi3` (legacy). On the default config only 1 of the 5 README smoke scenarios works, because of the planner-prompt parameter problem (step 2.6), not the infra.
+2. **Eval harness** (done; openai-only, default and legacy baselines in `evals/BASELINE.md`): richer KB + 3 new products, router trace, golden set (`evals/cases.json`), `bun run eval`. Default 24/90, legacy 66/90, openai-only 30/90. Default needs `PLANNER_THINK=false` (gemma4 otherwise spends its whole token budget thinking → ~100% fallback).
    - **2.6 Planner prompt fix:** add parameter names to `classifierPromptLocal` (prompt-only change). Run all three configs before and after.
 3. **Remove hardcoded data:** prices in `policy.ts`, FX rates in `exchange.app.ts`, `buildDeterministicFinanceMessage`. Order of phases 3/4 to be decided after 2.6 results — phase 4 deletes `policy.ts` (and its hardcoded prices) anyway.
 4. **Native tool calling + escalation:** replace the JSON planner, `policy.ts` and placeholders with schema-based tool calling. Math is also a candidate for local-first + escalation: its failure is detectable (the expression must pass the whitelist and evaluate).
 
 **Next steps, in order:**
 
-1. At home: `ollama pull gemma4:12b && ollama pull phi3`, run the default + legacy baselines with the current prompt (`bun run eval --config evals/configs/{default,legacy}.env --runs 3`), run `./scripts/smoke.sh`.
-2. Step 2.6 (planner prompt fix).
-3. Decide the order of phases 3/4.
+1. Step 2.6 (planner prompt fix). Before-numbers are in `evals/BASELINE.md`. On the default config only 1 of the 5 README smoke scenarios currently works (the `userInput` parameter problem); 2.6 is expected to fix that.
+2. Decide the order of phases 3/4.
 
 ## Working rules
 
@@ -49,10 +48,10 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 - `router/policy.ts` (~460 lines of keyword heuristics + hardcoded prices) — deleted in phase 4. Don't extend it.
 - `apps/exchange.app.ts` hardcoded rates; `buildDeterministicFinanceMessage` templated answers — phase 3.
 - KB product filter is an exact match on the lowercased filename stem (`kbRepository.findByProduct`), so "BrewMaster Y" ≠ `brewmaster y coffee machine` and silently falls back to a global search.
-- Primary planner prompt (`classifierPromptLocal`, used for `planner` whatever its provider/model) lists tool names but no parameter names; its only example is `{"userInput": ...}`. gpt-5.4-mini as primary copies `userInput` into every tool → `normalizeStep` nulls the params, and since the plan parses, the fallback (full prompt) never fires. Phase 4 candidate (schema-based tool calling).
+- Primary planner prompt (`classifierPromptLocal`, used for `planner` whatever its provider/model) lists tool names but no parameter names; its only example is `{"userInput": ...}`. gpt-5.4-mini and gemma4:12b as primary copy `userInput` into most tools → `normalizeStep` nulls the params, and since the plan parses, the fallback (full prompt) never fires. Phase 4 candidate (schema-based tool calling).
 - `sanitizeRoute` keyword checks are substring-based: `looksLikeExchangeQuestion` matches `ils` inside words like "emails" and injects a `getExchangeRate` step (eval `st-review`). Phase 4 (policy.ts is deleted).
 - With null product names, `buildDeterministicFinanceMessage` can return a confidently wrong templated answer ("The total is 0 ILS.", eval `mt-total-tidal-aurora`) — phase 3.
-- `PLANNER_STOP` contains ` ``` `, and phi3 starts its planner output with ` ```json `, so generation stops at the first token → empty plan → fallback on (almost) every request in the legacy config. Same stop list as before phase 1, kept so legacy measures the old behavior; phase 4 (tool calling) removes the stop-sequence planner.
+- `PLANNER_STOP` contains ` ``` `, and phi3 starts its planner output with ` ```json `, so generation stops at the first token → empty plan → fallback. In the legacy baseline that's 8 of 30 cases (27% of requests, deterministic at temperature 0). Same stop list as before phase 1, kept so legacy measures the old behavior; phase 4 (tool calling) removes the stop-sequence planner.
 - Planner still has no zod schema: the OpenAI fallback uses `json_object` (enforced), the local planner relies on the prompt + stop sequences — phase 4.
 
 ---
