@@ -70,9 +70,11 @@ function applyConfig(file: string): Record<string, string> {
       );
    }
 
+   // Blank, not delete: importing the Prisma client re-loads packages/server/.env and would
+   // refill deleted keys (it never overrides existing ones). llm/config treats '' as unset.
    for (const p of prefixes) {
       for (const suffix of COMPONENT_SUFFIXES)
-         delete process.env[`${p}_${suffix}`];
+         process.env[`${p}_${suffix}`] = '';
    }
    Object.assign(process.env, vars);
    return vars;
