@@ -49,7 +49,7 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 ## Known issues (remove each line when fixed)
 
 - `router/policy.ts` (~440 lines of keyword heuristics; `detectKnownProducts` still lists product names) — deleted in phase 4. Don't extend it.
-- `apps/exchange.app.ts` hardcoded rates — phase 3 (step 3.4).
+- `exchange.app.ts` `extractAmount` takes the first `N USD|EUR|GBP|ILS` in the user input as the amount to convert, so for "I have 500 ILS…" the tool output says "500 USD = … ILS" (a misleading line synthesis has to ignore). The rate itself is right. Phase 4 (amount becomes a tool parameter).
 - `sanitizeRoute` keyword checks are substring-based: `looksLikeExchangeQuestion` matches `ils` inside words like "emails" and injects a `getExchangeRate` step (eval `st-review`). Phase 4 (policy.ts is deleted).
 - `extractUsdAmount` (`router.service.ts`) falls back to `price[^0-9]*(\d+)` when the RAG output has no "USD": for "The price for **NeoBook Air 14** is **not available in the KB**." it returns `14` (from the product name), which placeholders then put into the math. The trigger in `mt-total-brewmaster-neobook` (a product-filter miss) is fixed in 3.1, but any RAG answer without "USD" still hits it. Phase 4 (placeholders replaced).
 - `sanitizeRoute` budget branch: `exchangeIndex` is read before `calculateMath` steps are filtered out, so when `looksLikeExchangeQuestion` appended `getExchangeRate` after the planner's math, the rebuilt math references itself (`((249) * ) - 500`) and fails; synthesis then does the arithmetic and sometimes gets it wrong (`mt-missing-aurora`). Phase 4.
@@ -74,7 +74,7 @@ ollama pull gemma4:12b && ollama pull embeddinggemma
 bun run dev        # server (bun --watch) + client (vite) via concurrently (index.ts)
 bun run index-kb   # (re)index data/products/*.txt into kb_chunks (scripts/index-kb.ts)
 bun run format     # prettier --write .
-bun test           # unit tests (bun:test), e.g. services/kb/productMatch.test.ts
+bun test           # unit tests (bun:test): kb/productMatch, apps/exchange (mocked fetch + clock)
 ./scripts/smoke.sh # 5 README scenarios + 1 chat prompt against a running `bun run dev` (needs jq)
 bun run eval --config evals/configs/openai-only.env --runs 3   # golden set; also --filter <id|category|tag>, --verbose
 
@@ -91,7 +91,7 @@ Unit tests are few (`bun test`, pure functions only). The eval harness (`bun run
 
 ### Environment
 
-`packages/server/.env` (Bun auto-loads it; see `.env.example`): `OPENAI_API_KEY`, `DATABASE_URL` (`file:./chatbot.db`, relative to `prisma/`), `OLLAMA_URL` (default `http://127.0.0.1:11434`), `EMBEDDING_MODEL` (default `embeddinggemma`), `PRODUCT_DATA_DIR` (default `<repo>/data/products`), `PORT` (default 3000), `LLM_TIMEOUT_MS` (default 60000; per-call timeout for every LLM and embedding request, both providers — not a component var, so evals inherit it from `.env`).
+`packages/server/.env` (Bun auto-loads it; see `.env.example`): `OPENAI_API_KEY`, `DATABASE_URL` (`file:./chatbot.db`, relative to `prisma/`), `OLLAMA_URL` (default `http://127.0.0.1:11434`), `EMBEDDING_MODEL` (default `embeddinggemma`), `PRODUCT_DATA_DIR` (default `<repo>/data/products`), `PORT` (default 3000), `LLM_TIMEOUT_MS` (default 60000; per-call timeout for every LLM and embedding request, both providers — not a component var, so evals inherit it from `.env`), `FX_TIMEOUT_MS` (default 5000; Frankfurter request timeout, parsed in `exchange.app.ts`).
 
 Per component (`PLANNER`, `PLANNER_FALLBACK`, `CHAT`, `RAG`, `REVIEWS`, `SYNTHESIS`, `MATH`, `JUDGE` — eval-only): `<C>_PROVIDER` (`ollama`|`openai`), `<C>_MODEL`, optional `<C>_MAX_TOKENS` (unset → no limit on Ollama, 1024 on OpenAI; `.env.example` and the default/legacy eval configs set `PLANNER_MAX_TOKENS=512`, `CHAT_MAX_TOKENS=1024` — leaving an Ollama component unlimited lets it run away), `<C>_THINK` (`true`|`false`, Ollama only; sent as `think` only when set — unset leaves the model default; models without the thinking capability such as phi3 reject `think: true`. gemma4 thinks by default: its thinking goes to Ollama's separate `thinking` field and eats `MAX_TOKENS`, which left the planner's `response` empty. `.env.example` and `default.env` set `PLANNER_THINK=false`, `CHAT_THINK=false`; legacy leaves it unset) and `<C>_REASONING_EFFORT` (OpenAI only; anything but `none` drops `temperature`, which gpt-5.x rejects then; gpt-4o-mini rejects `reasoning` entirely, so leave it unset for non-reasoning models). Defaults are in `llm/config.ts`; invalid values fail at startup. `OLLAMA_MODEL` and `PY_KB_URL` are no longer read.
 
@@ -118,7 +118,7 @@ Adding a tool (until phase 4) means touching: `ToolName` in `router/types.ts`, `
 #### Tools (`services/apps/`)
 
 - `weather` – Open-Meteo geocoding + forecast (no key).
-- `exchange` – static hardcoded rates to ILS (no API).
+- `exchange` – live ECB reference rates to ILS from Frankfurter (`api.frankfurter.dev/v1/latest?base=<CODE>&symbols=ILS`, no key, zod-validated). In-memory cache per currency: fresh for 1 h; if a refresh fails, a cached rate up to 24 h old is served and labeled "cached: live update unavailable"; otherwise the tool returns an error string (`numericValue` null). Never a hardcoded rate. Output keeps `rate N` first because `extractNumericValue` parses it. Unknown currency (404) → "I don't have a rate for X."
 - `math` – evaluates an arithmetic-only expression via `Function` after a character whitelist; word problems are first turned into an expression by component `math`.
 - `reviewAnalyzer` – `llm.generateObject('reviews', ReviewAnalysisSchema)` (provider-enforced JSON schema, then zod-parsed), with one self-correction pass when sentiment/score are inconsistent.
 - `productInformation` – RAG: `searchKb` (product filter via `matchProductNames` in `services/kb/productMatch.ts`: stopwords `the`/`a`/`an` dropped, every query token a prefix of a stored-name token, or space-free prefix; global search if no name matches or the filter returns nothing) → `RAG_GENERATION_PROMPT` on component `rag`.

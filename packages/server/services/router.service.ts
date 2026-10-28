@@ -285,7 +285,7 @@ async function executeSingleStep(
          if (code === 'ILS') {
             code = detectCurrencyFromInput(userInput);
          }
-         const output = getExchangeRate(code, userInput);
+         const output = await getExchangeRate(code, userInput);
          const numericValue = extractNumericValue(output);
          return {
             output,

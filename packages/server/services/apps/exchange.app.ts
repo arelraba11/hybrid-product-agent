@@ -1,11 +1,70 @@
 // services/apps/exchange.app.ts
+// Live rates to ILS from Frankfurter (ECB reference rates, no API key, updated once per
+// ECB working day). Cached per currency; never falls back to a hardcoded rate.
+import { z } from 'zod';
 
-const rates: Record<string, number> = {
-   USD: 3.75,
-   EUR: 4.05,
-   GBP: 4.7,
-   ILS: 1,
-};
+const FX_API_URL = 'https://api.frankfurter.dev/v1/latest';
+const FRESH_MS = 60 * 60 * 1000; // refetch after 1h
+const MAX_STALE_MS = 24 * 60 * 60 * 1000; // serve a cached rate this long if a refetch fails
+
+const timeoutParsed = z.coerce
+   .number()
+   .int()
+   .positive()
+   .default(5_000)
+   .safeParse(process.env.FX_TIMEOUT_MS || undefined);
+if (!timeoutParsed.success) {
+   throw new Error(
+      `Invalid FX_TIMEOUT_MS: ${z.prettifyError(timeoutParsed.error)}`
+   );
+}
+const FX_TIMEOUT_MS = timeoutParsed.data;
+
+const FrankfurterResponse = z.object({
+   date: z.string(),
+   rates: z.object({ ILS: z.number().positive() }),
+});
+
+type CachedRate = { rate: number; date: string; fetchedAt: number };
+
+const cache = new Map<string, CachedRate>();
+
+class UnknownCurrencyError extends Error {}
+
+async function fetchRate(code: string): Promise<CachedRate> {
+   const url = `${FX_API_URL}?base=${encodeURIComponent(code)}&symbols=ILS`;
+   const res = await fetch(url, { signal: AbortSignal.timeout(FX_TIMEOUT_MS) });
+   if (res.status === 404) throw new UnknownCurrencyError(code);
+   if (!res.ok) throw new Error(`Frankfurter HTTP ${res.status}`);
+
+   const body = FrankfurterResponse.parse(await res.json());
+   return { rate: body.rates.ILS, date: body.date, fetchedAt: Date.now() };
+}
+
+// Fresh cache hit, else fetch; if the fetch fails, a cached rate up to 24h old is served
+// (flagged stale). Throws when neither exists.
+async function rateToIls(
+   code: string
+): Promise<CachedRate & { stale: boolean }> {
+   const cached = cache.get(code);
+   const age = cached ? Date.now() - cached.fetchedAt : Infinity;
+   if (cached && age < FRESH_MS) return { ...cached, stale: false };
+
+   try {
+      const fresh = await fetchRate(code);
+      cache.set(code, fresh);
+      return { ...fresh, stale: false };
+   } catch (error) {
+      if (cached && age < MAX_STALE_MS) {
+         console.warn(
+            `[fx] ${code}: refresh failed, serving cached rate from ${cached.date}:`,
+            error
+         );
+         return { ...cached, stale: true };
+      }
+      throw error;
+   }
+}
 
 function extractAmount(input: string): number | null {
    // Matches: "10$", "$10", "10 USD", "10usd"
@@ -21,20 +80,30 @@ function extractAmount(input: string): number | null {
    return null;
 }
 
-export function getExchangeRate(
+export async function getExchangeRate(
    currencyCode: string,
    userInput?: string
-): string {
+): Promise<string> {
    const code = currencyCode.trim().toUpperCase();
-   const rate = rates[code];
-
-   if (!rate) {
-      return `I don't have a rate for ${code}. Try USD, EUR, or GBP.`;
-   }
 
    if (code === 'ILS') {
       return 'ILS is the base currency (1 ILS).';
    }
+
+   let live: Awaited<ReturnType<typeof rateToIls>>;
+   try {
+      live = await rateToIls(code);
+   } catch (error) {
+      if (error instanceof UnknownCurrencyError) {
+         return `I don't have a rate for ${code}.`;
+      }
+      console.error(`[fx] ${code}: live rate unavailable:`, error);
+      return `The live exchange rate for ${code} is unavailable right now. Please try again later.`;
+   }
+
+   // "rate N" must come first: the router parses the rate from it (extractNumericValue).
+   const { rate, date, stale } = live;
+   const source = `rate ${rate}, ECB reference rate of ${date}${stale ? ', cached: live update unavailable' : ''}`;
 
    const amount = userInput ? extractAmount(userInput) : null;
 
@@ -44,8 +113,8 @@ export function getExchangeRate(
          ? converted.toFixed(0)
          : converted.toFixed(2);
 
-      return `${amount} ${code} = ${pretty} ILS (rate ${rate})`;
+      return `${amount} ${code} = ${pretty} ILS (${source})`;
    }
 
-   return `The ${code} exchange rate is ${rate} ILS`;
+   return `1 ${code} = ${rate} ILS (${source})`;
 }
