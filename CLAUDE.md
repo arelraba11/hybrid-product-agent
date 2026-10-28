@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project context
 
 Personal project that runs **locally only** (MacBook Pro M4 Pro, 24GB unified memory → budget ~14–16GB for local models). No deployment, no CI.
-Originally a course final project; now being upgraded in phases (see Roadmap).
+Built in phases (see Roadmap).
 
 Hybrid design: **Ollama (local) + OpenAI API**. Each LLM component gets its provider and model from config.
 
