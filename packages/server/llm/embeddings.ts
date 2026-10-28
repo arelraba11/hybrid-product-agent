@@ -1,6 +1,6 @@
 // packages/server/llm/embeddings.ts
 // Embeddings are always local (Ollama). Changing EMBEDDING_MODEL requires a full reindex.
-import { OLLAMA_URL } from './config';
+import { LLM_TIMEOUT_MS, OLLAMA_URL } from './config';
 import { recordLlmCall } from './usage';
 
 export const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'embeddinggemma';
@@ -29,10 +29,19 @@ function documentInput(doc: EmbedDocument) {
 
 async function embedRaw(inputs: string[]): Promise<Float32Array[]> {
    const start = performance.now();
+   const signal = AbortSignal.timeout(LLM_TIMEOUT_MS);
    const res = await fetch(`${OLLAMA_URL}/api/embed`, {
       method: 'POST',
+      signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: EMBEDDING_MODEL, input: inputs }),
+   }).catch((err: unknown) => {
+      if (signal.aborted) {
+         throw new Error(
+            `Ollama embed (${EMBEDDING_MODEL}) timed out after ${LLM_TIMEOUT_MS}ms`
+         );
+      }
+      throw err;
    });
 
    if (!res.ok) {

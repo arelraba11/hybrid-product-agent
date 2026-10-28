@@ -1,7 +1,7 @@
 // packages/server/llm/index.ts
 // Provider-agnostic entry point. Services name a component; config picks provider + model.
 import type { z } from 'zod';
-import { costFor, llmConfig } from './config';
+import { costFor, LLM_TIMEOUT_MS, llmConfig } from './config';
 import { generateOllama } from './ollama.provider';
 import { generateOpenAI } from './openai.provider';
 import { recordLlmCall } from './usage';
@@ -23,18 +23,22 @@ function stripMarkdownJson(text: string) {
 
 function callProvider(
    cfg: ComponentConfig,
-   opts: GenerateOptions
+   opts: GenerateOptions,
+   signal: AbortSignal
 ): Promise<ProviderResult> {
    switch (cfg.provider) {
       case 'ollama':
-         return generateOllama(cfg, opts);
+         return generateOllama(cfg, opts, signal);
       case 'openai':
-         return generateOpenAI(cfg, opts);
+         return generateOpenAI(cfg, opts, signal);
    }
 }
 
 export const llm = {
-   /** Every call (including failures) is recorded for the active trace, if any. */
+   /**
+    * Every call (including failures) is recorded for the active trace, if any.
+    * Aborted after LLM_TIMEOUT_MS; the timeout surfaces as a normal error (callers' fallbacks apply).
+    */
    async generate(
       component: Component,
       opts: GenerateOptions
@@ -42,9 +46,10 @@ export const llm = {
       const cfg = llmConfig[component];
       const base = { component, provider: cfg.provider, model: cfg.model };
       const start = performance.now();
+      const signal = AbortSignal.timeout(LLM_TIMEOUT_MS);
 
       try {
-         const { text, usage } = await callProvider(cfg, opts);
+         const { text, usage } = await callProvider(cfg, opts, signal);
          recordLlmCall({
             ...base,
             latencyMs: performance.now() - start,
@@ -54,15 +59,20 @@ export const llm = {
          });
          return text;
       } catch (err) {
+         const error = signal.aborted
+            ? new Error(
+                 `${component} (${cfg.provider}/${cfg.model}) timed out after ${LLM_TIMEOUT_MS}ms`
+              )
+            : err;
          recordLlmCall({
             ...base,
             latencyMs: performance.now() - start,
             inputTokens: null,
             outputTokens: null,
             costUsd: null,
-            error: err instanceof Error ? err.message : String(err),
+            error: error instanceof Error ? error.message : String(error),
          });
-         throw err;
+         throw error;
       }
    },
 

@@ -36,15 +36,18 @@ function toOllamaFormat(
 
 export async function generateOllama(
    cfg: ComponentConfig,
-   { prompt, temperature, stop, responseFormat }: GenerateOptions
+   { prompt, temperature, stop, responseFormat }: GenerateOptions,
+   signal: AbortSignal
 ): Promise<ProviderResult> {
    const options: OllamaOptions = {};
    if (temperature !== undefined) options.temperature = temperature;
    if (cfg.maxTokens !== undefined) options.num_predict = cfg.maxTokens;
    if (stop?.length) options.stop = stop;
 
+   // Aborting closes the connection, which also stops generation on the Ollama side.
    const res = await fetch(`${OLLAMA_URL}/api/generate`, {
       method: 'POST',
+      signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
          model: cfg.model,

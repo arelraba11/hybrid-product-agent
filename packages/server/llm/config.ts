@@ -1,5 +1,6 @@
 // packages/server/llm/config.ts
 // Per-component provider config: <COMPONENT>_PROVIDER, _MODEL, _MAX_TOKENS, _REASONING_EFFORT.
+// Plus LLM_TIMEOUT_MS, a per-call timeout shared by every component and embeddings.
 import { z } from 'zod';
 import {
    COMPONENTS,
@@ -14,6 +15,20 @@ import {
 export const OLLAMA_URL = (
    process.env.OLLAMA_URL || 'http://127.0.0.1:11434'
 ).replace(/\/$/, '');
+
+const timeoutParsed = z.coerce
+   .number()
+   .int()
+   .positive()
+   .default(60_000)
+   .safeParse(process.env.LLM_TIMEOUT_MS || undefined);
+if (!timeoutParsed.success) {
+   throw new Error(
+      `Invalid LLM_TIMEOUT_MS: ${z.prettifyError(timeoutParsed.error)}`
+   );
+}
+/** Per-call timeout (ms) for every LLM and embedding request; the request is aborted. */
+export const LLM_TIMEOUT_MS = timeoutParsed.data;
 
 // Used when <COMPONENT>_MAX_TOKENS is unset. Ollama gets no limit (model default).
 const DEFAULT_OPENAI_MAX_TOKENS = 1024;
@@ -85,14 +100,16 @@ export function loadLlmConfig(
 export const llmConfig = loadLlmConfig();
 
 export function describeLlmConfig(): string {
-   return COMPONENTS.map((c) => {
+   const lines = COMPONENTS.map((c) => {
       const cfg = llmConfig[c];
       const extras = [
          cfg.maxTokens ? `maxTokens=${cfg.maxTokens}` : null,
          cfg.reasoningEffort ? `effort=${cfg.reasoningEffort}` : null,
       ].filter(Boolean);
       return `  ${c.padEnd(16)} ${cfg.provider}/${cfg.model}${extras.length ? ` (${extras.join(', ')})` : ''}`;
-   }).join('\n');
+   });
+   lines.push(`  ${'timeout'.padEnd(16)} ${LLM_TIMEOUT_MS}ms per call`);
+   return lines.join('\n');
 }
 
 // USD per 1M tokens, OpenAI list prices (checked 2026-10). Cached-input discounts are

@@ -86,9 +86,9 @@ There are no unit tests. The eval harness (`bun run eval`, see Evals below) is t
 
 ### Environment
 
-`packages/server/.env` (Bun auto-loads it; see `.env.example`): `OPENAI_API_KEY`, `DATABASE_URL` (`file:./chatbot.db`, relative to `prisma/`), `OLLAMA_URL` (default `http://127.0.0.1:11434`), `EMBEDDING_MODEL` (default `embeddinggemma`), `PRODUCT_DATA_DIR` (default `<repo>/data/products`), `PORT` (default 3000).
+`packages/server/.env` (Bun auto-loads it; see `.env.example`): `OPENAI_API_KEY`, `DATABASE_URL` (`file:./chatbot.db`, relative to `prisma/`), `OLLAMA_URL` (default `http://127.0.0.1:11434`), `EMBEDDING_MODEL` (default `embeddinggemma`), `PRODUCT_DATA_DIR` (default `<repo>/data/products`), `PORT` (default 3000), `LLM_TIMEOUT_MS` (default 60000; per-call timeout for every LLM and embedding request, both providers — not a component var, so evals inherit it from `.env`).
 
-Per component (`PLANNER`, `PLANNER_FALLBACK`, `CHAT`, `RAG`, `REVIEWS`, `SYNTHESIS`, `MATH`, `JUDGE` — eval-only): `<C>_PROVIDER` (`ollama`|`openai`), `<C>_MODEL`, optional `<C>_MAX_TOKENS` (unset → no limit on Ollama, 1024 on OpenAI) and `<C>_REASONING_EFFORT` (OpenAI only; anything but `none` drops `temperature`, which gpt-5.x rejects then; gpt-4o-mini rejects `reasoning` entirely, so leave it unset for non-reasoning models). Defaults are in `llm/config.ts`; invalid values fail at startup. `OLLAMA_MODEL` and `PY_KB_URL` are no longer read.
+Per component (`PLANNER`, `PLANNER_FALLBACK`, `CHAT`, `RAG`, `REVIEWS`, `SYNTHESIS`, `MATH`, `JUDGE` — eval-only): `<C>_PROVIDER` (`ollama`|`openai`), `<C>_MODEL`, optional `<C>_MAX_TOKENS` (unset → no limit on Ollama, 1024 on OpenAI; `.env.example` and the default/legacy eval configs set `PLANNER_MAX_TOKENS=512`, `CHAT_MAX_TOKENS=1024` — leaving an Ollama component unlimited lets it run away) and `<C>_REASONING_EFFORT` (OpenAI only; anything but `none` drops `temperature`, which gpt-5.x rejects then; gpt-4o-mini rejects `reasoning` entirely, so leave it unset for non-reasoning models). Defaults are in `llm/config.ts`; invalid values fail at startup. `OLLAMA_MODEL` and `PY_KB_URL` are no longer read.
 
 The Vite dev server proxies `/api` to `http://localhost:3000` (`packages/client/vite.config.ts`).
 
@@ -122,10 +122,10 @@ Adding a tool (until phase 4) means touching: `ToolName` in `router/types.ts`, `
 #### LLM layer (`packages/server/llm/` — the only place with provider-specific code)
 
 - `config.ts` – per-component config table + env parsing (zod); `describeLlmConfig()` is logged at startup.
-- `index.ts` – `llm.generate(component, { prompt, temperature?, stop?, responseFormat? })` and `llm.generateObject(component, zodSchema, name, opts)`.
+- `index.ts` – `llm.generate(component, { prompt, temperature?, stop?, responseFormat? })` and `llm.generateObject(component, zodSchema, name, opts)`. Each call gets `AbortSignal.timeout(LLM_TIMEOUT_MS)`, passed to the provider (Ollama `fetch` signal — aborting stops generation server-side; OpenAI request `signal`, which the SDK doesn't retry, unlike its own `timeout`). A timeout throws `<component> (<provider>/<model>) timed out after Nms`, recorded in the trace like any failure; for the planner it triggers the normal fallback chain.
 - `openai.provider.ts` – Responses API; structured output via `text.format` (`json_object`, or `json_schema` from `zodTextFormat`, strict). Errors surface; nothing is retried without the format.
 - `ollama.provider.ts` – `/api/generate`, non-streaming; `num_predict` only if `<C>_MAX_TOKENS` is set; `format: 'json'` or `z.toJSONSchema(schema)`; stop sequences per call.
-- `embeddings.ts` – Ollama `/api/embed`, always local; adds embeddinggemma task prefixes (`task: search result | query:` / `title: … | text:`).
+- `embeddings.ts` – Ollama `/api/embed`, always local, same `LLM_TIMEOUT_MS`; adds embeddinggemma task prefixes (`task: search result | query:` / `title: … | text:`).
 - `usage.ts` – `collectLlmCalls(fn)`: AsyncLocalStorage collector (nestable). `llm.generate` and embeddings record every call (component, provider, model, latency, tokens from OpenAI `usage` / Ollama `prompt_eval_count`+`eval_count`, cost, error); no-op outside a collector. Prices: `OPENAI_PRICING` + `costFor()` in `config.ts` (USD/1M tokens; Ollama = 0; unknown model → `null`).
 
 Prompts are template strings with `{{PLACEHOLDER}}` slots in `prompts/prompts.ts`; `.txt` prompts in `prompts/` are imported directly by Bun (e.g. `summarize-reviews.txt`).

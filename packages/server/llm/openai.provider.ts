@@ -34,7 +34,8 @@ function toTextFormat(format: ResponseFormat): ResponseFormatTextConfig {
 
 export async function generateOpenAI(
    cfg: ComponentConfig,
-   { prompt, temperature, responseFormat }: GenerateOptions
+   { prompt, temperature, responseFormat }: GenerateOptions,
+   signal: AbortSignal
 ): Promise<ProviderResult> {
    const params: ResponseCreateParamsNonStreaming = {
       model: cfg.model,
@@ -57,7 +58,9 @@ export async function generateOpenAI(
       params.temperature = temperature;
    }
 
-   const response = await getClient().responses.create(params);
+   // A signal rather than the SDK's `timeout` option: the SDK retries its own timeouts
+   // (2x by default) but never a caller abort.
+   const response = await getClient().responses.create(params, { signal });
    return {
       text: response.output_text,
       usage: response.usage
