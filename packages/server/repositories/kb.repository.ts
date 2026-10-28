@@ -12,10 +12,20 @@ export const kbRepository = {
       ]);
    },
 
-   findByProduct(productName?: string): Promise<KbChunk[]> {
+   findByProduct(productNames?: string[]): Promise<KbChunk[]> {
       return prisma.kbChunk.findMany({
-         where: productName ? { productName } : undefined,
+         where: productNames
+            ? { productName: { in: productNames } }
+            : undefined,
       });
+   },
+
+   async productNames(): Promise<string[]> {
+      const rows = await prisma.kbChunk.findMany({
+         select: { productName: true },
+         distinct: ['productName'],
+      });
+      return rows.map((r) => r.productName);
    },
 
    async embeddingModels(): Promise<string[]> {

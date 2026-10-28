@@ -8,7 +8,7 @@ export type KbHit = {
    distance: number; // cosine distance: 1 - cosine similarity
 };
 
-export type VectorSearchOptions = { topK: number; productName?: string };
+export type VectorSearchOptions = { topK: number; productNames?: string[] };
 
 export interface VectorIndex {
    search(queryVec: Float32Array, opts: VectorSearchOptions): Promise<KbHit[]>;
@@ -47,8 +47,8 @@ function cosineSimilarity(a: Float32Array, b: Float32Array): number {
 
 // Loads the (filtered) rows and scores them in TS. Fine for a few hundred chunks.
 export const bruteForceIndex: VectorIndex = {
-   async search(queryVec, { topK, productName }) {
-      const rows = await kbRepository.findByProduct(productName);
+   async search(queryVec, { topK, productNames }) {
+      const rows = await kbRepository.findByProduct(productNames);
 
       return rows
          .map((row) => ({

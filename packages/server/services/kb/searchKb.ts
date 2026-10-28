@@ -1,7 +1,9 @@
 // Port of the former python-service /search_kb endpoint:
-// top-k + optional product filter, with a global retry when the filter finds nothing.
+// top-k + optional product filter (token/prefix match against stored product names,
+// see productMatch.ts), with a global retry when the filter finds nothing.
 import { EMBEDDING_MODEL, embedQuery } from '../../llm/embeddings';
 import { kbRepository } from '../../repositories/kb.repository';
+import { matchProductNames } from './productMatch';
 import { bruteForceIndex, type KbHit, type VectorIndex } from './vectorSearch';
 
 const index: VectorIndex = bruteForceIndex;
@@ -33,14 +35,22 @@ export async function searchKb(
 
    const k = Math.min(Math.max(Math.trunc(topK), 1), 10);
    const queryVec = await embedQuery(query);
-   const filter = productName?.toLowerCase().trim() || undefined;
+   const filter = productName?.trim()
+      ? matchProductNames(productName, await kbRepository.productNames())
+      : [];
 
-   const hits = await index.search(queryVec, { topK: k, productName: filter });
-
-   // If strict product filter returned nothing, retry globally.
-   if (filter && !hits.length) {
-      return index.search(queryVec, { topK: k });
+   if (productName?.trim()) {
+      console.log(
+         filter.length
+            ? `[kb] product filter "${productName}" → [${filter.join(', ')}]`
+            : `[kb] product filter "${productName}" → no match, global search`
+      );
    }
 
-   return hits;
+   const hits = filter.length
+      ? await index.search(queryVec, { topK: k, productNames: filter })
+      : [];
+
+   // No matching product (or no rows for it): search globally.
+   return hits.length ? hits : index.search(queryVec, { topK: k });
 }

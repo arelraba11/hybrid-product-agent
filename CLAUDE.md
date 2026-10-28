@@ -50,10 +50,9 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 
 - `router/policy.ts` (~460 lines of keyword heuristics + hardcoded prices) — deleted in phase 4. Don't extend it.
 - `apps/exchange.app.ts` hardcoded rates; `buildDeterministicFinanceMessage` templated answers — phase 3.
-- KB product filter is an exact match on the lowercased filename stem (`kbRepository.findByProduct`), so "BrewMaster Y" ≠ `brewmaster y coffee machine` and silently falls back to a global search.
 - `sanitizeRoute` keyword checks are substring-based: `looksLikeExchangeQuestion` matches `ils` inside words like "emails" and injects a `getExchangeRate` step (eval `st-review`). Phase 4 (policy.ts is deleted).
 - `buildDeterministicFinanceMessage` returns confidently wrong templated answers when a price is missing or wrong: "You will have 1000 ILS remaining." for a product not in the KB (`up-pixelpad-budget`), "The total is 1361.25 ILS." instead of 5,430 (`mt-total-brewmaster-neobook`) — phase 3 (b).
-- `extractUsdAmount` (`router.service.ts`) falls back to `price[^0-9]*(\d+)` when the RAG output has no "USD": for "The price for **NeoBook Air 14** is **not available in the KB**." it returns `14` (from the product name), which placeholders then put into the math (`mt-total-brewmaster-neobook`). That RAG answer is itself wrong (the KB has 1,099 USD) — likely the product-filter mismatch above. Phase 4 (placeholders replaced).
+- `extractUsdAmount` (`router.service.ts`) falls back to `price[^0-9]*(\d+)` when the RAG output has no "USD": for "The price for **NeoBook Air 14** is **not available in the KB**." it returns `14` (from the product name), which placeholders then put into the math. The trigger in `mt-total-brewmaster-neobook` (a product-filter miss) is fixed in 3.1, but any RAG answer without "USD" still hits it. Phase 4 (placeholders replaced).
 - `sanitizeRoute` rewrites correct "total in ILS" plans (2× product + math) into 5 steps with an extra `calculateMath` (eval `mt-total-*`, tools scorer) — phase 4.
 - gemma4:12b emits broken JSON for math plans (unterminated object: a `}` missing after `expression`, both `st-math-*` cases, 3/3 runs) → detectable, the fallback planner handles it (default fallback 7%). Phase 4 (schema-based tool calling).
 - phi3 code fences: `PLANNER_STOP` contains ` ``` `, and phi3 still starts its planner output with ` ```json ` on 5 of 30 cases despite the prompt's no-fences rule (8 before 2.6), so generation stops at the first token → empty plan → fallback (legacy fallback 16%). Same stop list as before phase 1, kept so legacy measures the old behavior; phase 4 (tool calling) removes the stop-sequence planner.
@@ -75,6 +74,7 @@ ollama pull gemma4:12b && ollama pull embeddinggemma
 bun run dev        # server (bun --watch) + client (vite) via concurrently (index.ts)
 bun run index-kb   # (re)index data/products/*.txt into kb_chunks (scripts/index-kb.ts)
 bun run format     # prettier --write .
+bun test           # unit tests (bun:test), e.g. services/kb/productMatch.test.ts
 ./scripts/smoke.sh # 5 README scenarios + 1 chat prompt against a running `bun run dev` (needs jq)
 bun run eval --config evals/configs/openai-only.env --runs 3   # golden set; also --filter <id|category|tag>, --verbose
 
@@ -87,7 +87,7 @@ cd packages/client && bun run lint     # eslint (client only; server has no lint
 cd packages/client && bun run build    # tsc -b && vite build
 ```
 
-There are no unit tests. The eval harness (`bun run eval`, see Evals below) is the regression check; it needs Ollama running (embeddings) and an OpenAI key.
+Unit tests are few (`bun test`, pure functions only). The eval harness (`bun run eval`, see Evals below) is the main regression check; it needs Ollama running (embeddings) and an OpenAI key.
 
 ### Environment
 
@@ -121,7 +121,7 @@ Adding a tool (until phase 4) means touching: `ToolName` in `router/types.ts`, `
 - `exchange` – static hardcoded rates to ILS (no API).
 - `math` – evaluates an arithmetic-only expression via `Function` after a character whitelist; word problems are first turned into an expression by component `math`.
 - `reviewAnalyzer` – `llm.generateObject('reviews', ReviewAnalysisSchema)` (provider-enforced JSON schema, then zod-parsed), with one self-correction pass when sentiment/score are inconsistent.
-- `productInformation` – RAG: `searchKb` (product filter on lowercased `product_name`, global retry if empty) → `RAG_GENERATION_PROMPT` on component `rag`.
+- `productInformation` – RAG: `searchKb` (product filter via `matchProductNames` in `services/kb/productMatch.ts`: stopwords `the`/`a`/`an` dropped, every query token a prefix of a stored-name token, or space-free prefix; global search if no name matches or the filter returns nothing) → `RAG_GENERATION_PROMPT` on component `rag`.
 - `general` – keyword guardrails, then component `chat` with the last 20 history messages (no stop sequences).
 
 #### LLM layer (`packages/server/llm/` — the only place with provider-specific code)
