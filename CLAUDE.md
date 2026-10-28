@@ -48,7 +48,7 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
 
 ## Known issues (remove each line when fixed)
 
-- `router/policy.ts` (~460 lines of keyword heuristics + hardcoded prices) — deleted in phase 4. Don't extend it.
+- `router/policy.ts` (~440 lines of keyword heuristics; `detectKnownProducts` still lists product names) — deleted in phase 4. Don't extend it.
 - `apps/exchange.app.ts` hardcoded rates; `buildDeterministicFinanceMessage` templated answers — phase 3.
 - `sanitizeRoute` keyword checks are substring-based: `looksLikeExchangeQuestion` matches `ils` inside words like "emails" and injects a `getExchangeRate` step (eval `st-review`). Phase 4 (policy.ts is deleted).
 - `buildDeterministicFinanceMessage` returns confidently wrong templated answers when a price is missing or wrong: "You will have 1000 ILS remaining." for a product not in the KB (`up-pixelpad-budget`), "The total is 1361.25 ILS." instead of 5,430 (`mt-total-brewmaster-neobook`) — phase 3 (b).
@@ -107,12 +107,12 @@ React client → Express server on Bun (`packages/server`) → Ollama (local) + 
 `controllers/chat.controller.ts` (zod: `prompt`, `conversationId` uuid) → `routerService.handleUserMessage` in `services/router.service.ts`, which:
 
 1. **Plans** – `classify()`: `classifyWithPlanner` (component `planner`, `classifierPromptLocal`, stop sequences `PLANNER_STOP`) → on any error `classifyWithFallback` (component `plannerFallback`, `classifierPrompt`, `json_object`) → finally a single `generalChat` step. Plan shape: `{ plan: [{tool, parameters}], final_answer_synthesis_required }` (`services/router/types.ts`).
-2. **Sanitizes** – `sanitizeRoute()` in `services/router/policy.ts` heavily rewrites the LLM plan with keyword heuristics: normalizes parameter aliases, injects/removes steps, and rebuilds the math step for budget/"total ILS" questions. It also contains hardcoded USD product prices (`knownUsdPriceForProduct`).
+2. **Sanitizes** – `sanitizeRoute()` in `services/router/policy.ts` heavily rewrites the LLM plan with keyword heuristics: normalizes parameter aliases, injects/removes steps, and rebuilds the math step for budget/"total ILS" questions. Budget math references the product steps' `numericValue` via placeholders (no hardcoded prices since 3.2).
 3. **Executes** steps sequentially in `executeSingleStep()`. Parameters can reference earlier outputs with `<result_from_tool_N>` (1-based), resolved by `services/router/placeholders.ts` — it substitutes the step's `numericValue` when present, otherwise its text output.
 4. **Answers** – `buildDeterministicFinanceMessage()` (`services/router/postprocess.ts`) may short-circuit with a templated answer; otherwise the answer is synthesis (component `synthesis`, `ORCHESTRATION_SYNTHESIS_PROMPT`) when required, else the last step's output.
 5. Appends both turns to the history store and saves it. Default is `historyRepository` (`packages/server/history.json`, gitignored); callers can inject any `HistoryStore` (`handleUserMessage(id, input, { history })`, e.g. `createInMemoryHistory()` in evals). Typing `/reset` clears all history.
 
-`handleUserMessage` also returns a `RouterTrace` (`router/types.ts`; the controller ignores it): planner source (`primary`/`fallback`/`generalChat`) + errors, raw and sanitized plan, per-step resolved params/output/`numericValue`/`numericSource` (`hardcode` = `knownUsdPriceForProduct` supplied it)/latency/LLM calls, `answerSource` (`deterministic`/`synthesis`/`lastStep`), and token/cost totals. The trace is observability only — the `ExecutedStep[]` passed to synthesis is unchanged.
+`handleUserMessage` also returns a `RouterTrace` (`router/types.ts`; the controller ignores it): planner source (`primary`/`fallback`/`generalChat`) + errors, raw and sanitized plan, per-step resolved params/output/`numericValue`/`numericSource` (`output` = parsed from the tool output)/latency/LLM calls, `answerSource` (`deterministic`/`synthesis`/`lastStep`), and token/cost totals. The trace is observability only — the `ExecutedStep[]` passed to synthesis is unchanged.
 
 Adding a tool (until phase 4) means touching: `ToolName` in `router/types.ts`, `ALLOWED_TOOLS` + a `case` in `executeSingleStep` (router.service.ts), `normalizeStep` in `policy.ts`, and the classifier prompts.
 
@@ -148,7 +148,7 @@ Source docs are `data/products/*.txt`; `scripts/index-kb.ts` chunks them (220 wo
 
 - `evals/cases.json` – golden set, validated by the zod schema in `scripts/eval/cases.ts`. `expect.tools` excludes `generalChat` (`[]` = no tools), `allow_extra` lists tolerated extra tools; `args` are case-insensitive substring facts per tool step; `answer_contains` (inner array = any-of) / `answer_not_contains` are normalized and number/word-boundary aware; `derived` computes the expected ILS number from the trace's `getExchangeRate` value and KB prices (so it survives phase 3); `judge.rubric` → component `judge` (`EVAL_JUDGE_PROMPT`). Tags: `readme`, `hardcode-sensitive`, `fx-static`, `new-product`, `filter-mismatch`.
 - `evals/configs/{default,legacy,openai-only}.env` – must set every component; the runner clears component vars inherited from `packages/server/.env` and dynamically imports the server after applying the config. Judge is gpt-5.4-mini in all configs.
-- Each case-run gets a fresh conversation id and in-memory history (never touches `history.json`). Raw results with full traces → `evals/results/` (gitignored); console prints per-case, category, tag and scorer pass rates plus latency p50/p95, tokens, router/judge cost, fallback, deterministic-answer and hardcoded-price rates.
+- Each case-run gets a fresh conversation id and in-memory history (never touches `history.json`). Raw results with full traces → `evals/results/` (gitignored); console prints per-case, category, tag and scorer pass rates plus latency p50/p95, tokens, router/judge cost, fallback and deterministic-answer rates.
 
 ## Conventions
 

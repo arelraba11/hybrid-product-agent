@@ -16,11 +16,7 @@ import {
    historyRepository,
    type HistoryStore,
 } from '../repositories/history.repository';
-import {
-   sanitizeRoute,
-   detectCurrencyFromInput,
-   knownUsdPriceForProduct,
-} from './router/policy';
+import { sanitizeRoute, detectCurrencyFromInput } from './router/policy';
 import { resolveParameters } from './router/placeholders';
 import { buildDeterministicFinanceMessage } from './router/postprocess';
 import type {
@@ -329,18 +325,11 @@ async function executeSingleStep(
          }
 
          const output = await getProductInformation(productName, query);
-         let numericValue = extractUsdAmount(output);
-         let numericSource: NumericSource | undefined =
-            numericValue != null ? 'output' : undefined;
-         if (numericValue == null) {
-            numericValue = knownUsdPriceForProduct(productName);
-            if (numericValue != null) numericSource = 'hardcode';
-         }
-
+         const numericValue = extractUsdAmount(output);
          return {
             output,
             numericValue,
-            numericSource,
+            numericSource: numericValue != null ? 'output' : undefined,
          };
       }
 

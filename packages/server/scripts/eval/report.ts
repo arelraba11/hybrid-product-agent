@@ -36,7 +36,6 @@ export type Summary = {
    fallbackRate: number; // plannerSource !== 'primary'
    plannerFailedRate: number; // both planners failed -> generalChat
    deterministicAnswerRate: number;
-   hardcodePriceRate: number; // runs where knownUsdPriceForProduct supplied a number
    crashes: number;
 };
 
@@ -104,11 +103,6 @@ export function summarize(results: CaseResult[]): Summary {
       ),
       deterministicAnswerRate: fraction(
          traces.filter((t) => t.answerSource === 'deterministic').length
-      ),
-      hardcodePriceRate: fraction(
-         traces.filter((t) =>
-            t.steps.some((s) => s.numericSource === 'hardcode')
-         ).length
       ),
       crashes: runs.filter(({ run }) => run.error !== undefined).length,
    };
@@ -209,7 +203,6 @@ export function formatReport(results: CaseResult[], summary: Summary): string {
             ['fallback rate', pct(s.fallbackRate)],
             ['both planners failed', pct(s.plannerFailedRate)],
             ['deterministic answers', pct(s.deterministicAnswerRate)],
-            ['hardcoded price used', pct(s.hardcodePriceRate)],
             ['crashes', String(s.crashes)],
          ]
       ),

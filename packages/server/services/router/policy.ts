@@ -119,16 +119,6 @@ function looksOpenEndedRequest(input: string): boolean {
    );
 }
 
-export function knownUsdPriceForProduct(productName: string): number | null {
-   const key = productName.toLowerCase().trim();
-   if (key.includes('evophone')) return 799;
-   if (key.includes('printforge')) return 25;
-   if (key.includes('brewmaster')) return 349;
-   if (key.includes('electroride')) return 32900;
-   if (key.includes('neobook')) return 1099;
-   return null;
-}
-
 function detectKnownProducts(input: string): string[] {
    const known = [
       'EvoPhone X',
@@ -340,24 +330,15 @@ export function sanitizeRoute(
                ? `<result_from_tool_${exchangeIndex + 1}>`
                : '1';
 
-         const knownPrices = products.map((p) => knownUsdPriceForProduct(p));
-         const allKnown =
-            knownPrices.length > 0 && knownPrices.every((p) => p != null);
-
          let usdRef = '0';
-         if (allKnown) {
-            const totalKnown = knownPrices.reduce((a, b) => a + Number(b), 0);
-            usdRef = String(totalKnown);
-         } else {
-            const productStepIndexes = plan
-               .map((s, idx) => ({ s, idx }))
-               .filter((x) => x.s.tool === 'getProductInformation')
-               .map((x) => x.idx);
-            if (productStepIndexes.length > 0) {
-               usdRef = productStepIndexes
-                  .map((idx) => `<result_from_tool_${idx + 1}>`)
-                  .join(' + ');
-            }
+         const productStepIndexes = plan
+            .map((s, idx) => ({ s, idx }))
+            .filter((x) => x.s.tool === 'getProductInformation')
+            .map((x) => x.idx);
+         if (productStepIndexes.length > 0) {
+            usdRef = productStepIndexes
+               .map((idx) => `<result_from_tool_${idx + 1}>`)
+               .join(' + ');
          }
 
          const lower = userInput.toLowerCase();

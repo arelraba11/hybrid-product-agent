@@ -30,8 +30,8 @@ export type ExecutedStep = {
 
 export type PlannerSource = 'primary' | 'fallback' | 'generalChat';
 
-/** 'hardcode' = numericValue came from knownUsdPriceForProduct, not the tool output. */
-export type NumericSource = 'output' | 'hardcode';
+/** 'output' = numericValue was parsed from the tool output. */
+export type NumericSource = 'output';
 
 export type AnswerSource = 'deterministic' | 'synthesis' | 'lastStep';
 
