@@ -214,6 +214,19 @@ Default stays cheap because the planner turns are local. On openai-only the rout
 
 **grounded_numbers finds synthesis arithmetic on the legacy agent.** In every legacy budget answer (`mt-budget-*`, `mt-missing-*`, 12/12 runs per config), the math tool computed only the final expression, e.g. `3000 - ((689) * 3.1259)`. Synthesis then stated the intermediate cost itself: "689 USD … about **2,153.75 ILS**", "25 USD × 3.1259 = **78.15 ILS**". Those numbers were right, but no tool produced them. The agent does that step in its own `calculateMath` call, so it is grounded. On the agent, the only ungrounded numbers are the 2 `mt-total-tidal-aurora` runs ("3210.26", synthesis computing the LTE total).
 
+### 4.3: legacy path deleted (`7427773`)
+
+The tool-calling agent is now the only router; `legacy.env` is retired (phi3 has no tool calling in Ollama). Scorers are the same as 4.2b, so compare against the re-scored 4.2 numbers.
+
+| Config      | Overall   | vs 4.2 re-scored | tools / derived / judge | grounded_numbers | Escalation / repair | Latency p50 / p95 | Cost router |
+| ----------- | --------- | ---------------- | ----------------------- | ---------------- | ------------------- | ----------------- | ----------- |
+| default     | **87/90** | 87 → 87          | 90 / 18/21 / 27/27      | 77/78            | 0% / 0%             | 3.5s / 6.9s       | $0.111      |
+| openai-only | **90/90** | 90 → 90          | 90 / 21/21 / 27/27      | 78/78            | 0% / 0%             | 4.3s / 6.3s       | $0.256      |
+
+Deleting the legacy code changed no scores, as intended. The only failing case is still `mt-total-tidal-aurora` on default, 0/3: gemma4 sums both Aurora variants (`(429 + 249 + 299) * 3.1259` = 3054). In 1 run synthesis again stated an LTE total no tool produced (3210.25, grounded_numbers 77/78). Mean turns 2.13 / 2.11; chat answers 13%.
+
+**Phase 4 end state:** default 81 → **87**/90 and openai-only 81 → **90**/90 against the reference re-scored with the same scorers (87/87). Every reference failure (`st-review` injection, `mt-total-*` rewrites) is gone, and so are the 7% gemma4 broken-JSON fallbacks. The costs: about 1.5 s more p50 latency (an extra planner turn + synthesis on every tool answer) and +65% router cost on openai-only.
+
 ## Step 2.6: planner prompt fix (`006458d`)
 
 This is a prompt-only change to `classifierPromptLocal`. It lists each tool with its exact canonical parameter names (`city`, `currencyCode`, `expression`, `reviewText`, `product_name` + `query`, `userInput`), gives one example per tool plus one chaining example, and adds an explicit "raw JSON only, no code fences" rule. None of the examples come from `evals/cases.json`: they use Tokyo, GBP, 12 \* 9 + 4, 900 ILS / 60 GBP and a "Nimbus Kettle K2" that isn't in the KB. The only token they share with the golden set is the digit `2`. Code, `policy.ts`, stop sequences and the fallback prompt are unchanged.

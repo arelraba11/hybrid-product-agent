@@ -32,7 +32,7 @@ Change one thing per phase so eval deltas are attributable. Do not do work from 
    - 4.1 zod tool definitions + `llm.chat`.
    - 4.2 agent loop with one repair + one escalation (behind a flag): default 81, openai-only 84/90.
    - 4.2b tools scorer accepts repeated tools, plus `grounded_numbers` (measurement only). Re-scored: default 87, openai-only 90/90.
-   - 4.3 legacy path deleted. `legacy.env` retired: phi3 has no tool-calling capability in Ollama.
+   - 4.3 legacy path deleted. `legacy.env` retired: phi3 has no tool-calling capability in Ollama. **Default 87/90, openai-only 90/90 at `7427773`: the reference for the next phase.** The one remaining failure is `mt-total-tidal-aurora` on default.
 
 **Next steps:** none scheduled. The next phase isn't defined yet; candidates are under Follow-ups.
 
