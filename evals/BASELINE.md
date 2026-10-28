@@ -93,6 +93,40 @@ FX behavior (unit-tested with a mocked fetch and clock in `services/apps/exchang
 
 **Phase 3 summary:** the price table, templated answers and static rates are gone, and the KB filter matches real product names. **Default 80 → 79/90 (`987913c`): this is the phase 4 reference.** The 3.4 dip to 72 was the stale-`exchangeIndex` bug, which only stayed hidden because synthesis could do arithmetic at 3.75 (the underlying issue, that synthesis computes numbers when a tool step fails, is in CLAUDE.md known issues for phase 4). Remaining failures: `st-review` ("ils" in "emails"), `mt-total-*` (5-step rewrite; tools only, numbers right), all in `policy.ts`; and `mt-missing-evophone` 2/3 (synthesis rounding, above).
 
+## Phase 4 reference: legacy agent at `81801af` (2026-10-28)
+
+**Compare every phase 4 step against these two runs** (`--runs 3`, legacy JSON planner + `policy.ts`). `81801af` is eval hygiene only, with no router change:
+
+- the derived scorer's default tolerance is now max(1 ILS, 0.5% of expected), was 0.01 absolute
+- `mt-missing-evophone`'s budget is now 1500 ILS, was 2500
+
+| Category        | default   | openai-only |     | Scorer       | default | openai-only |
+| --------------- | --------- | ----------- | --- | ------------ | ------- | ----------- |
+| single-tool     | 12/15     | 12/15       |     | tools        | 81/90   | 81/90       |
+| rag             | 24/24     | 24/24       |     | args         | 54/54   | 54/54       |
+| multi-tool      | 18/24     | 18/24       |     | contains     | 45/45   | 45/45       |
+| unknown-product | 9/9       | 9/9         |     | not_contains | 9/9     | 9/9         |
+| chit-chat       | 9/9       | 9/9         |     | derived      | 21/21   | 21/21       |
+| ambiguous       | 9/9       | 9/9         |     | judge        | 27/27   | 27/27       |
+| **overall**     | **81/90** | **81/90**   |     |              |         |             |
+
+| Metric                   | default                                    | openai-only     |
+| ------------------------ | ------------------------------------------ | --------------- |
+| Latency p50 / p95        | 2.2s / 5.7s                                | 2.5s / 5.1s     |
+| Tokens in / out (router) | 161,602 / 9,781                            | 150,675 / 9,606 |
+| Cost router / judge      | $0.099 / $0.009                            | $0.155 / $0.009 |
+| Fallback / both failed   | 7% / 0% (6 runs: `st-math-*`, broken JSON) | 0% / 0%         |
+| Crashes                  | 0                                          | 0               |
+
+**Failing (9 runs, identical in both configs):** all tools-scorer failures from `policy.ts`:
+
+- `st-review` 0/3: `getExchangeRate` injected because "ils" matches inside "emails"
+- `mt-total-brewmaster-neobook` 0/3 and `mt-total-tidal-aurora` 0/3: the 5-step rewrite. Their numbers are right (derived 21/21).
+
+**79 → 81 compared with `987913c`:** `mt-missing-evophone` 1/3 → 3/3, the hygiene change. At 1500 ILS the gap is about 998 ILS, so rounding no longer matters. openai-only had no run since 2.6 (78/90); it now matches default because both share the same `sanitizeRoute` rewrites and the same synthesis model.
+
+Ran both configs in parallel (they share Ollama only for embeddings).
+
 ## Step 2.6: planner prompt fix (`006458d`)
 
 This is a prompt-only change to `classifierPromptLocal`. It lists each tool with its exact canonical parameter names (`city`, `currencyCode`, `expression`, `reviewText`, `product_name` + `query`, `userInput`), gives one example per tool plus one chaining example, and adds an explicit "raw JSON only, no code fences" rule. None of the examples come from `evals/cases.json`: they use Tokyo, GBP, 12 \* 9 + 4, 900 ILS / 60 GBP and a "Nimbus Kettle K2" that isn't in the KB. The only token they share with the golden set is the digit `2`. Code, `policy.ts`, stop sequences and the fallback prompt are unchanged.
