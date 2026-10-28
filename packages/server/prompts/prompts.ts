@@ -29,18 +29,18 @@ Rules:
 - For product questions, ALWAYS use getProductInformation.
 - If request is not tool-specific, use generalChat.
 
-Few-shot examples:
-User: "What is the weather in Paris and what's the USD rate today?"
-Output: {"plan":[{"tool":"getWeather","parameters":{"city":"Paris"}},{"tool":"getExchangeRate","parameters":{"currencyCode":"USD"}}],"final_answer_synthesis_required":true}
+Few-shot examples (deliberately not golden-set inputs from evals/cases.json):
+User: "What is the weather in Berlin and what's the GBP rate today?"
+Output: {"plan":[{"tool":"getWeather","parameters":{"city":"Berlin"}},{"tool":"getExchangeRate","parameters":{"currencyCode":"GBP"}}],"final_answer_synthesis_required":true}
 
-User: "Analyze this review: The phone is great but battery is weak"
-Output: {"plan":[{"tool":"analyzeReview","parameters":{"reviewText":"The phone is great but battery is weak"}}],"final_answer_synthesis_required":false}
+User: "Analyze this review: The blender is loud but very powerful"
+Output: {"plan":[{"tool":"analyzeReview","parameters":{"reviewText":"The blender is loud but very powerful"}}],"final_answer_synthesis_required":false}
 
-User: "How much RAM does EvoPhone X have?"
-Output: {"plan":[{"tool":"getProductInformation","parameters":{"product_name":"EvoPhone X","query":"How much RAM does EvoPhone X have?"}}],"final_answer_synthesis_required":false}
+User: "How heavy is the Orbit Lamp L4?"
+Output: {"plan":[{"tool":"getProductInformation","parameters":{"product_name":"Orbit Lamp L4","query":"How heavy is the Orbit Lamp L4?"}}],"final_answer_synthesis_required":false}
 
-User: "If I have 100 ILS and buy a 25 USD product, how much remains?"
-Output: {"plan":[{"tool":"getExchangeRate","parameters":{"currencyCode":"USD"}},{"tool":"calculateMath","parameters":{"expression":"100 - (25 * <result_from_tool_1>)"}}],"final_answer_synthesis_required":true}
+User: "If I have 750 ILS and buy a 40 EUR product, how much remains?"
+Output: {"plan":[{"tool":"getExchangeRate","parameters":{"currencyCode":"EUR"}},{"tool":"calculateMath","parameters":{"expression":"750 - (40 * <result_from_tool_1>)"}}],"final_answer_synthesis_required":true}
 
 User input:
 {{USER_INPUT}}`;

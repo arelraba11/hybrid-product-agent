@@ -504,10 +504,10 @@
          "expect": {
             "tools": [],
             "ordered": true,
-            "allow_extra": ["getProductInformation"],
-            "answer_contains": [
-               ["689", "which drone", "which model", "specify"]
-            ]
+            "allow_extra": ["getProductInformation"]
+         },
+         "judge": {
+            "rubric": "The user asked for the price of \"the drone\" without naming a model. The knowledge base has exactly one drone, the Skyline Drone M2 at 689 USD. The answer passes if it EITHER asks the user which drone/model they mean, OR gives 689 USD (optionally converted) as the price of the Skyline Drone M2. It fails if it states any other price or invents a product."
          }
       }
    ]
